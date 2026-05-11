@@ -53,22 +53,25 @@
     touch-action: none;
   }
 
-  /* On-screen D-pad for touch */
-  #pad {
-    position: fixed; bottom: 16px; left: 16px;
-    display: grid; grid-template-columns: 56px 56px 56px;
-    grid-template-rows: 56px 56px 56px; gap: 4px;
-    opacity: 0.85; z-index: 50;
+  /* On-screen controls for touch */
+  #pad, #actBtns {
+    position: fixed; bottom: 16px; display: flex; gap: 8px;
+    opacity: 0.9; z-index: 50;
   }
-  #pad button {
+  #pad  { left: 16px; }
+  #actBtns { right: 16px; }
+  #pad button, #actBtns button {
+    width: 64px; height: 64px;
     background: rgba(80,80,120,0.85); color: #fff; border: 2px solid #000;
-    border-radius: 8px; font-size: 22px; font-weight: bold;
-    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.4);
+    border-radius: 10px; font-size: 18px; font-weight: bold;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.4);
     cursor: pointer;
+    user-select: none;
   }
-  #pad button:active { background: #6cd6ff; }
-  #pad .empty { visibility: hidden; }
-  @media (hover:hover) and (pointer:fine) { #pad { display: none; } }
+  #pad button:active, #actBtns button:active { background: #6cd6ff; }
+  @media (hover:hover) and (pointer:fine) {
+    #pad, #actBtns { display: none; }
+  }
 
   /* Overlay screens (menu, battle, level-complete) */
   .overlay {
@@ -205,21 +208,18 @@
   </div>
 
   <div id="stage">
-    <canvas id="world" width="640" height="400"></canvas>
+    <canvas id="world" width="640" height="416"></canvas>
   </div>
 </div>
 
-<!-- Touch D-Pad -->
+<!-- Touch Controls (横版) -->
 <div id="pad" aria-hidden="true">
-  <button class="empty"></button>
-  <button data-dir="up">▲</button>
-  <button class="empty"></button>
-  <button data-dir="left">◀</button>
-  <button class="empty"></button>
-  <button data-dir="right">▶</button>
-  <button class="empty"></button>
-  <button data-dir="down">▼</button>
-  <button class="empty"></button>
+  <button data-action="left">◀</button>
+  <button data-action="right">▶</button>
+</div>
+<div id="actBtns" aria-hidden="true">
+  <button data-action="jump">⬆ 跳</button>
+  <button data-action="mine">⛏ 挖</button>
 </div>
 
 <!-- Start menu -->
@@ -318,7 +318,7 @@
       age6:'6 岁', age6desc:'20以内加减·形状',
       age7:'7 岁', age7desc:'100以内加减·入门乘法',
       age8:'8 岁', age8desc:'乘法口诀·入门除法',
-      hintControls:'🎮 电脑：方向键或 WASD 移动  |  📱 手机/平板：屏幕左下虚拟方向键',
+      hintControls:'🎮 电脑：←→ 走 · ↑/空格 跳 · E 挖矿  |  📱 触屏：← → 跳 挖',
       btnStart:'开始冒险',
       hudLevel:'第',  hudLevelAfter:'关',
       hudBoss:'BOSS',
@@ -386,7 +386,7 @@
       age6:'Age 6', age6desc:'Add/Sub ≤20 · Shapes',
       age7:'Age 7', age7desc:'Add/Sub ≤100 · Basic Multiply',
       age8:'Age 8', age8desc:'Times Table · Basic Divide',
-      hintControls:'🎮 PC: Arrow keys or WASD  |  📱 Mobile: on-screen D-pad',
+      hintControls:'🎮 PC: ←→ Move · ↑/Space Jump · E Mine  |  📱 Touch: ← → Jump Mine',
       btnStart:'Start Adventure',
       hudLevel:'Level', hudLevelAfter:'',
       hudBoss:'BOSS',
@@ -449,29 +449,48 @@
     return s;
   }
 
-  // ====== 配置 ======
-  const TILE = 40;
-  const COLS = 16;
-  const ROWS = 10;
-  const W = TILE * COLS;
-  const H = TILE * ROWS;
+  // ====== 配置 (横版2D) ======
+  const TILE = 32;
+  const VIEW_COLS = 20;
+  const VIEW_ROWS = 13;
+  const MAP_COLS = 70;
+  const MAP_ROWS = 13;
+  const W = TILE * VIEW_COLS;       // 视口宽 = 640
+  const H = TILE * VIEW_ROWS;       // 视口高 = 416
+  const GRAVITY = 0.6;
+  const JUMP_V = -11;
+  const MOVE_SPEED = 3.2;
+  const MAX_FALL = 14;
 
   // 地块类型
   const T = {
-    GRASS:0, DIRT:1, STONE:2, WATER:3, TREE:4, SAND:5, PATH:6, PORTAL:7, FLOWER:8,
+    AIR:0,
+    GRASS:1,        // 草地顶层 (实心)
+    DIRT:2,         // 土
+    STONE:3,        // 石头 (可挖)
+    WATER:4,
+    TREE_TRUNK:5,   // 树干 (装饰, 可穿过)
+    TREE_LEAVES:6,  // 树叶 (装饰, 可穿过)
+    FLOWER:7,       // 装饰
+    PORTAL:8,
     COAL:9, IRON:10, GOLD:11, DIAMOND:12, EMERALD:13,
-    BOSS_FLOOR:14, BOSS_PORTAL:15
+    BOSS_FLOOR:14,
+    CLOUD:15,       // 装饰背景
+    BEDROCK:16,     // 关底基岩
   };
-  const PASSABLE = new Set([T.GRASS, T.DIRT, T.SAND, T.PATH, T.PORTAL, T.FLOWER, T.BOSS_FLOOR, T.BOSS_PORTAL]);
-  // 可挖掘 = 挡路但可以挖
+  // 实心 = 玩家碰撞 + 站立 (不能穿过)
+  const SOLID = new Set([T.GRASS, T.DIRT, T.STONE, T.COAL, T.IRON, T.GOLD,
+                         T.DIAMOND, T.EMERALD, T.BOSS_FLOOR, T.BEDROCK]);
+  // 可挖掘 = SOLID 子集, 挖空后变 AIR
   const MINEABLE = {
-    [T.TREE]:    { material:'wood',    name:'木头',   color:'#5fbf4a', need:0 },
-    [T.STONE]:   { material:'stone',   name:'石头',   color:'#aaa',    need:0 },
-    [T.COAL]:    { material:'coal',    name:'煤炭',   color:'#222',    need:0 },
-    [T.IRON]:    { material:'iron',    name:'铁矿',   color:'#d8a878', need:1 },
-    [T.GOLD]:    { material:'gold',    name:'金矿',   color:'#ffd54a', need:2 },
-    [T.DIAMOND]: { material:'diamond', name:'钻石矿', color:'#5fe0e0', need:2 },
-    [T.EMERALD]: { material:'emerald', name:'绿宝石', color:'#3aff7f', need:3 },
+    [T.TREE_TRUNK]: { material:'wood',    color:'#5a3a1a', need:0 },
+    [T.TREE_LEAVES]:{ material:'wood',    color:'#3a8a2a', need:0 },
+    [T.STONE]:      { material:'stone',   color:'#aaa',    need:0 },
+    [T.COAL]:       { material:'coal',    color:'#222',    need:0 },
+    [T.IRON]:       { material:'iron',    color:'#d8a878', need:1 },
+    [T.GOLD]:       { material:'gold',    color:'#ffd54a', need:2 },
+    [T.DIAMOND]:    { material:'diamond', color:'#5fe0e0', need:2 },
+    [T.EMERALD]:    { material:'emerald', color:'#3aff7f', need:3 },
   };
   const MATERIAL_EMOJI = {
     wood:'🪵', stone:'🪨', coal:'⬛', iron:'🟫', gold:'🟨', diamond:'💎', emerald:'🟩'
@@ -521,22 +540,30 @@
     score: 0,
     gems: 0,
     hp: 3,
-    map: null,
-    mobs: [],
-    portal: { x:0, y:0 },
-    player: { tx:0, ty:0, px:0, py:0, dir:'down', moving:false },
-    pendingDir: null,
+    map: null,                   // 2D map[y][x] = tile type
+    mobs: [],                    // {x, y, type, dead, bob} 全部 pixel 坐标
+    portal: { x:0, y:0 },        // 像素坐标
+    player: {
+      x: 0, y: 0,                // 像素坐标 (左上角)
+      w: 22, h: 36,
+      vx: 0, vy: 0,
+      onGround: false,
+      facing: 'right',
+      walkAnim: 0,
+    },
+    keys: { left:false, right:false, jump:false, jumpHeld:false },
+    camX: 0,
     activeMob: null,
-    activeMineTile: null,        // {x,y,type}
+    activeMineTile: null,
     inBattle: false,
     inMining: false,
     inBoss: false,
-    boss: null,                  // {type, hp, maxHp}
+    boss: null,
     questionWrongTries: 0,
     audioCtx: null,
     inventory: { wood:0, stone:0, coal:0, iron:0, gold:0, diamond:0, emerald:0 },
-    sword: 0,                    // 0-4
-    potions: 0,                  // 治疗药水库存
+    sword: 0,
+    potions: 0,
   };
 
   // ====== Canvas 设置 ======
@@ -578,208 +605,219 @@
   const sndPortal  = () => { beep(440,0.1); setTimeout(()=>beep(660,0.1),90); setTimeout(()=>beep(880,0.18),180); };
   const sndGem     = () => { beep(1200,0.08,'triangle',0.05); };
 
-  // ====== 地图生成 ======
-  function genMap(seed = Date.now()) {
-    const r = mulberry32(seed);
-    const map = [];
-    for (let y = 0; y < ROWS; y++) {
-      const row = [];
-      for (let x = 0; x < COLS; x++) {
-        row.push(T.GRASS);
-      }
-      map.push(row);
-    }
-    // 散布水洼
-    placeBlob(map, T.WATER, 1 + Math.floor(r()*2), 3, 6, r);
-    // 沙地围水
-    for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++) {
-      if (map[y][x] === T.GRASS && hasNeighbor(map,x,y,T.WATER)) {
-        if (r() < 0.6) map[y][x] = T.SAND;
-      }
-    }
-    // 石头
-    placeBlob(map, T.STONE, 2, 2, 5, r);
-    // 树
-    for (let i = 0; i < 8 + Math.floor(r()*5); i++) {
-      const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
-      if (map[y][x] === T.GRASS) map[y][x] = T.TREE;
-    }
-    // 花
-    for (let i = 0; i < 5; i++) {
-      const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
-      if (map[y][x] === T.GRASS) map[y][x] = T.FLOWER;
-    }
-    // 泥土小路
-    for (let i = 0; i < 4; i++) {
-      const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
-      if (map[y][x] === T.GRASS) map[y][x] = T.DIRT;
-    }
-    // 矿石: 煤(多)/铁(中)/金(少)/钻石(稀)/绿宝石(极稀)
-    // 优先把矿石放在石头堆附近
-    const oreSpec = [
-      { type: T.COAL,    count: 3 + Math.floor(r()*2) },
-      { type: T.IRON,    count: 2 + Math.floor(r()*2) },
-      { type: T.GOLD,    count: 1 + Math.floor(r()*2) },
-      { type: T.DIAMOND, count: 1 + Math.floor(r()*1) },
-      { type: T.EMERALD, count: r() < 0.5 ? 1 : 0 },
-    ];
-    for (const spec of oreSpec) {
-      for (let i = 0; i < spec.count; i++) {
-        let placed = false;
-        // 先尝试在石头旁
-        for (let tries=0; tries<30 && !placed; tries++) {
-          const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
-          if (map[y][x] === T.STONE && hasNeighbor(map, x, y, T.STONE)) {
-            map[y][x] = spec.type; placed = true; break;
-          }
-        }
-        // 否则随机放草地
-        if (!placed) for (let tries=0; tries<20 && !placed; tries++) {
-          const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
-          if (map[y][x] === T.GRASS || map[y][x] === T.STONE) {
-            map[y][x] = spec.type; placed = true;
-          }
-        }
-      }
-    }
-    return map;
-  }
-
-  // Boss 关地图: 中央竞技场
-  function genBossMap() {
-    const map = [];
-    for (let y = 0; y < ROWS; y++) {
-      const row = [];
-      for (let x = 0; x < COLS; x++) {
-        // 外围一圈石头
-        if (x===0||y===0||x===COLS-1||y===ROWS-1) row.push(T.STONE);
-        else row.push(T.BOSS_FLOOR);
-      }
-      map.push(row);
-    }
-    // 几个装饰
-    for (let i = 0; i < 4; i++) {
-      const x = 2 + Math.floor(Math.random()*(COLS-4));
-      const y = 2 + Math.floor(Math.random()*(ROWS-4));
-      if (map[y][x] === T.BOSS_FLOOR) map[y][x] = T.STONE;
-    }
-    return map;
-  }
-
-  function placeBlob(map, type, count, minSize, maxSize, r) {
-    for (let i = 0; i < count; i++) {
-      const cx = 1 + Math.floor(r()*(COLS-2));
-      const cy = 1 + Math.floor(r()*(ROWS-2));
-      const size = minSize + Math.floor(r()*(maxSize-minSize));
-      for (let dy=-size; dy<=size; dy++) for (let dx=-size; dx<=size; dx++) {
-        const x = cx+dx, y = cy+dy;
-        if (x<0||y<0||x>=COLS||y>=ROWS) continue;
-        const d = Math.abs(dx)+Math.abs(dy);
-        if (d <= size && r() < 0.7) map[y][x] = type;
-      }
-    }
-  }
-
-  function hasNeighbor(map, x, y, type) {
-    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-    return dirs.some(([dx,dy]) => {
-      const nx=x+dx, ny=y+dy;
-      return nx>=0&&ny>=0&&nx<COLS&&ny<ROWS && map[ny][nx]===type;
-    });
-  }
-
+  // ====== 工具 ======
   function mulberry32(seed) {
     let a = seed >>> 0;
     return function() {
       a |= 0; a = a + 0x6D2B79F5 | 0;
-      let t = a;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      let tt = a;
+      tt = Math.imul(tt ^ tt >>> 15, tt | 1);
+      tt ^= tt + Math.imul(tt ^ tt >>> 7, tt | 61);
+      return ((tt ^ tt >>> 14) >>> 0) / 4294967296;
     };
   }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-  function randomPassableTile(map, avoid=[]) {
-    for (let tries = 0; tries < 500; tries++) {
-      const x = Math.floor(Math.random()*COLS);
-      const y = Math.floor(Math.random()*ROWS);
-      if (!PASSABLE.has(map[y][x])) continue;
-      if (avoid.some(a => Math.abs(a.x-x)+Math.abs(a.y-y) < 3)) continue;
-      return {x,y};
+  // ====== 地图生成 (侧视) ======
+  // 返回 {map, heights} — heights[x] = 草地顶部的 y 坐标
+  function genMap(seed = Date.now()) {
+    const r = mulberry32(seed);
+    const map = [];
+    for (let y = 0; y < MAP_ROWS; y++) {
+      const row = [];
+      for (let x = 0; x < MAP_COLS; x++) row.push(T.AIR);
+      map.push(row);
     }
-    // fallback
-    for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++) {
-      if (PASSABLE.has(map[y][x])) return {x,y};
+    // 地面高度起伏
+    const heights = [];
+    let h = 7;
+    for (let x = 0; x < MAP_COLS; x++) {
+      if (r() < 0.22) h += (r() < 0.5 ? -1 : 1);
+      h = clamp(h, 5, 9);
+      // 不在最开头制造大跳, 起步要平
+      if (x < 3) h = 7;
+      // 关末出口附近也要平
+      if (x > MAP_COLS - 4) h = 7;
+      heights.push(h);
     }
-    return {x:0,y:0};
+    // 填充地形
+    for (let x = 0; x < MAP_COLS; x++) {
+      const sy = heights[x];
+      map[sy][x] = T.GRASS;
+      for (let y = sy+1; y < sy+3 && y < MAP_ROWS; y++) map[y][x] = T.DIRT;
+      for (let y = sy+3; y < MAP_ROWS-1; y++) map[y][x] = T.STONE;
+      map[MAP_ROWS-1][x] = T.BEDROCK;
+    }
+    // 偶尔挖几个洞 (台阶之间地表浅坑)
+    for (let i = 0; i < 4; i++) {
+      const cx = 5 + Math.floor(r()*(MAP_COLS-15));
+      const sy = heights[cx];
+      if (sy < MAP_ROWS-3) {
+        map[sy][cx] = T.AIR;
+        if (r() < 0.5 && cx+1 < MAP_COLS) map[heights[cx+1]][cx+1] = T.AIR;
+      }
+    }
+    // 树 (草地上方)
+    for (let i = 0; i < 8; i++) {
+      const x = 3 + Math.floor(r()*(MAP_COLS-6));
+      const sy = heights[x];
+      if (sy > 2 && map[sy-1][x] === T.AIR) {
+        map[sy-1][x] = T.TREE_TRUNK;
+        if (sy > 2 && map[sy-2][x] === T.AIR) map[sy-2][x] = T.TREE_LEAVES;
+        if (sy > 3 && map[sy-3][x] === T.AIR) map[sy-3][x] = T.TREE_LEAVES;
+      }
+    }
+    // 花
+    for (let i = 0; i < 8; i++) {
+      const x = 1 + Math.floor(r()*(MAP_COLS-2));
+      const sy = heights[x];
+      if (sy > 1 && map[sy-1][x] === T.AIR) map[sy-1][x] = T.FLOWER;
+    }
+    // 矿石 (替换 STONE)
+    const oreSpec = [
+      { type: T.COAL,    count: 10 },
+      { type: T.IRON,    count: 6 },
+      { type: T.GOLD,    count: 4 },
+      { type: T.DIAMOND, count: 3 },
+      { type: T.EMERALD, count: 1 + Math.floor(r()*2) },
+    ];
+    for (const spec of oreSpec) {
+      for (let i = 0; i < spec.count; i++) {
+        for (let tries=0; tries<30; tries++) {
+          const x = Math.floor(r()*MAP_COLS);
+          const y = Math.floor(r()*MAP_ROWS);
+          if (map[y][x] === T.STONE) { map[y][x] = spec.type; break; }
+        }
+      }
+    }
+    // 云
+    for (let i = 0; i < 6; i++) {
+      const cx = Math.floor(r()*MAP_COLS);
+      const cy = 1 + Math.floor(r()*3);
+      for (let dx=0; dx<3+Math.floor(r()*2); dx++) {
+        if (cx+dx < MAP_COLS && map[cy][cx+dx] === T.AIR) map[cy][cx+dx] = T.CLOUD;
+      }
+    }
+    return { map, heights };
+  }
+
+  // Boss 关: 长平台 + 中央两个石柱
+  function genBossMap() {
+    const map = [];
+    for (let y = 0; y < MAP_ROWS; y++) {
+      const row = [];
+      for (let x = 0; x < MAP_COLS; x++) row.push(T.AIR);
+      map.push(row);
+    }
+    const heights = [];
+    const ground = 8;
+    for (let x = 0; x < MAP_COLS; x++) {
+      heights.push(ground);
+      map[ground][x] = T.BOSS_FLOOR;
+      for (let y = ground+1; y < MAP_ROWS-1; y++) map[y][x] = T.STONE;
+      map[MAP_ROWS-1][x] = T.BEDROCK;
+    }
+    // 两根装饰石柱
+    for (let i = 0; i < 2; i++) {
+      const cx = 15 + i*20;
+      for (let dy = 0; dy < 3; dy++) map[ground-1-dy][cx] = T.STONE;
+    }
+    return { map, heights };
+  }
+
+  // 工具: 在像素坐标查询 tile
+  function tileAt(px, py) {
+    const tx = Math.floor(px / TILE);
+    const ty = Math.floor(py / TILE);
+    if (tx < 0 || ty < 0 || tx >= MAP_COLS || ty >= MAP_ROWS) return T.BEDROCK; // 越界视为实心
+    return state.map[ty][tx];
+  }
+  function isSolidAt(tx, ty) {
+    if (tx < 0 || ty < 0 || tx >= MAP_COLS || ty >= MAP_ROWS) return true;
+    return SOLID.has(state.map[ty][tx]);
   }
 
   // ====== 关卡初始化 ======
   function buildLevel() {
-    state.pendingDir = null;
     state.activeMob = null;
     state.activeMineTile = null;
     state.inBattle = false;
     state.inMining = false;
     state.inBoss = false;
     state.boss = null;
+    state.keys.left = state.keys.right = state.keys.jump = state.keys.jumpHeld = false;
 
-    if (state.level % 5 === 0) {
-      buildBossLevel();
-    } else {
-      buildNormalLevel();
-    }
+    if (state.level % 5 === 0) buildBossLevel();
+    else buildNormalLevel();
     updateHud();
   }
 
+  function spawnPlayerOn(heights, tx) {
+    const sy = heights[tx];
+    state.player.x = tx * TILE + 5;
+    state.player.y = sy * TILE - state.player.h;
+    state.player.vx = 0;
+    state.player.vy = 0;
+    state.player.facing = 'right';
+    state.player.onGround = true;
+    state.camX = clamp(state.player.x - W/2, 0, MAP_COLS*TILE - W);
+  }
+
   function buildNormalLevel() {
-    const map = genMap(Date.now() + state.level);
+    const { map, heights } = genMap(Date.now() + state.level);
     state.map = map;
+    state.mapHeights = heights;
 
-    const placed = [];
-    const player = randomPassableTile(map);
-    placed.push(player);
-    state.player.tx = player.x; state.player.ty = player.y;
-    state.player.px = player.x * TILE; state.player.py = player.y * TILE;
-    state.player.moving = false;
+    spawnPlayerOn(heights, 1);
 
-    // 怪物
+    // 怪物 (站在草地上, 间距至少 6 格)
     const mobCount = Math.min(3 + Math.floor(state.level/2), 7);
-    const mobNames = Object.keys(MOBS);
+    const mobTypes = Object.keys(MOBS);
     state.mobs = [];
+    const usedX = new Set([0,1,2]);
     for (let i = 0; i < mobCount; i++) {
-      const pos = randomPassableTile(map, placed);
-      placed.push(pos);
-      const type = mobNames[Math.floor(Math.random()*mobNames.length)];
-      state.mobs.push({ x:pos.x, y:pos.y, type, dead:false, bob:Math.random()*Math.PI*2 });
+      for (let tries=0; tries<50; tries++) {
+        const tx = 6 + Math.floor(Math.random()*(MAP_COLS - 12));
+        if ([...usedX].some(u => Math.abs(u - tx) < 4)) continue;
+        usedX.add(tx);
+        const sy = heights[tx];
+        const type = mobTypes[Math.floor(Math.random()*mobTypes.length)];
+        state.mobs.push({
+          x: tx * TILE + 4, y: sy * TILE - 32, w: 24, h: 32,
+          type, dead: false, bob: Math.random()*Math.PI*2,
+        });
+        break;
+      }
     }
 
-    // 传送门
-    const portal = randomPassableTile(map, placed);
-    map[portal.y][portal.x] = T.PORTAL;
-    state.portal = portal;
+    // 传送门: 在最右侧地表上
+    const px = MAP_COLS - 2;
+    const sy = heights[px];
+    map[sy-1][px] = T.PORTAL;
+    state.portal = { x: px * TILE, y: (sy-1) * TILE };
   }
 
   function buildBossLevel() {
-    state.map = genBossMap();
+    const { map, heights } = genBossMap();
+    state.map = map;
+    state.mapHeights = heights;
     state.inBoss = true;
-    // 玩家放左边
-    state.player.tx = 2; state.player.ty = Math.floor(ROWS/2);
-    state.player.px = state.player.tx * TILE; state.player.py = state.player.ty * TILE;
-    state.player.moving = false;
     state.mobs = [];
-    // Boss 站右边 2x2
+
+    spawnPlayerOn(heights, 2);
+
     const bossTypes = ['wither', 'enderdragon', 'guardian'];
-    const bossType = bossTypes[(state.level/5 - 1) % bossTypes.length];
+    const bossType = bossTypes[Math.floor(state.level/5 - 1) % bossTypes.length];
+    const bx = MAP_COLS - 8;
+    const sy = heights[bx];
     state.boss = {
       type: bossType,
-      x: COLS - 4,
-      y: Math.floor(ROWS/2) - 1,
-      hp: 5,
-      maxHp: 5,
-      bob: 0,
+      x: bx * TILE,
+      y: sy * TILE - TILE*2,    // 占 2x2 格
+      w: TILE*2, h: TILE*2,
+      hp: 5, maxHp: 5, bob: 0,
     };
-    state.portal = { x:-1, y:-1 }; // 无传送门
+    state.portal = { x:-1, y:-1 };
   }
 
 
@@ -847,50 +885,67 @@
     openCraftPanel(); // 刷新
   }
 
-  // ====== 渲染 ======
-  // 不可通行的方块类型 (用于 3D 斜面)
-  const BLOCKED = new Set([T.STONE, T.WATER, T.TREE, T.COAL, T.IRON, T.GOLD, T.DIAMOND, T.EMERALD]);
+  // ====== 渲染 (侧视) ======
+  const BLOCKED_VISUAL = new Set([T.STONE, T.DIRT, T.GRASS, T.COAL, T.IRON, T.GOLD,
+                                  T.DIAMOND, T.EMERALD, T.BOSS_FLOOR, T.BEDROCK]);
 
   function draw() {
-    ctx.clearRect(0,0,W,H);
-    // 背景
-    ctx.fillStyle = '#2a4d2a';
-    ctx.fillRect(0,0,W,H);
+    // 天空渐变 (按时段固定)
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#7ec0ff');
+    sky.addColorStop(0.6, '#bfe3ff');
+    sky.addColorStop(1, '#e6f4ff');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+
+    // 远景小山 (视差: 镜头移动一半速度)
+    drawBackgroundHills();
+
+    const cx = Math.floor(state.camX);
+    const startTx = Math.max(0, Math.floor(cx / TILE));
+    const endTx = Math.min(MAP_COLS - 1, Math.floor((cx + W) / TILE) + 1);
 
     // 地块
-    for (let y=0; y<ROWS; y++) {
-      for (let x=0; x<COLS; x++) {
-        drawTile(x, y, state.map[y][x]);
+    for (let ty = 0; ty < MAP_ROWS; ty++) {
+      for (let tx = startTx; tx <= endTx; tx++) {
+        const type = state.map[ty][tx];
+        if (type === T.AIR) continue;
+        const dx = tx*TILE - cx;
+        const dy = ty*TILE;
+        drawTile(dx, dy, type, tx, ty);
       }
     }
 
-    // 为不可通行的方块加 3D 斜面 (顶左亮, 底右暗)
-    for (let y=0; y<ROWS; y++) {
-      for (let x=0; x<COLS; x++) {
-        const type = state.map[y][x];
-        if (BLOCKED.has(type)) {
-          const px = x*TILE, py = y*TILE;
-          ctx.fillStyle = 'rgba(255,255,255,0.22)';
-          ctx.fillRect(px, py, TILE, 3);            // 顶
-          ctx.fillRect(px, py, 3, TILE);            // 左
-          ctx.fillStyle = 'rgba(0,0,0,0.35)';
-          ctx.fillRect(px, py+TILE-3, TILE, 3);     // 底
-          ctx.fillRect(px+TILE-3, py, 3, TILE);     // 右
-        }
+    // 3D 斜面 (顶左亮 / 底右暗)
+    for (let ty = 0; ty < MAP_ROWS; ty++) {
+      for (let tx = startTx; tx <= endTx; tx++) {
+        const type = state.map[ty][tx];
+        if (!BLOCKED_VISUAL.has(type)) continue;
+        const dx = tx*TILE - cx;
+        const dy = ty*TILE;
+        // 仅顶部一行 (草地顶或暴露面) 加最亮高光
+        const upType = state.map[ty-1]?.[tx];
+        const isTop = (ty === 0) || upType === T.AIR || upType === T.CLOUD ||
+                      upType === T.TREE_TRUNK || upType === T.TREE_LEAVES || upType === T.FLOWER;
+        ctx.fillStyle = isTop ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)';
+        ctx.fillRect(dx, dy, TILE, 2);
+        ctx.fillRect(dx, dy, 2, TILE);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(dx, dy+TILE-2, TILE, 2);
+        ctx.fillRect(dx+TILE-2, dy, 2, TILE);
       }
     }
 
-    // 网格线 (淡色) — 让每个方块边界都清晰
-    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    // 网格线
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let x = 1; x < COLS; x++) {
-      ctx.moveTo(x*TILE + 0.5, 0);
-      ctx.lineTo(x*TILE + 0.5, H);
+    const offset = cx % TILE;
+    for (let x = TILE - offset; x < W; x += TILE) {
+      ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H);
     }
-    for (let y = 1; y < ROWS; y++) {
-      ctx.moveTo(0, y*TILE + 0.5);
-      ctx.lineTo(W, y*TILE + 0.5);
+    for (let y = TILE; y < H; y += TILE) {
+      ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5);
     }
     ctx.stroke();
 
@@ -899,335 +954,350 @@
       if (m.dead) continue;
       m.bob += 0.05;
       const bob = Math.sin(m.bob) * 2;
-      drawMob(m.x*TILE, m.y*TILE + bob, m.type);
-      // 怪物脚下阴影
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      const dx = m.x - cx;
+      if (dx < -40 || dx > W) continue;
+      // 阴影
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(m.x*TILE + TILE/2, m.y*TILE + TILE-4, TILE/3, 4, 0, 0, Math.PI*2);
+      ctx.ellipse(dx + m.w/2, m.y + m.h - 2, m.w/2, 4, 0, 0, Math.PI*2);
       ctx.fill();
+      drawMob(dx, m.y + bob, m.type);
     }
 
     // Boss
     if (state.boss) {
       state.boss.bob += 0.04;
       const bob = Math.sin(state.boss.bob) * 3;
-      drawBoss(state.boss.x*TILE, state.boss.y*TILE + bob, state.boss.type);
+      const dx = state.boss.x - cx;
+      drawBoss(dx, state.boss.y + bob, state.boss.type);
     }
 
-    // 玩家阴影 + 玩家
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    // 玩家
+    const pdx = state.player.x - cx;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.ellipse(state.player.px + TILE/2, state.player.py + TILE-4, TILE/3, 4, 0, 0, Math.PI*2);
+    ctx.ellipse(pdx + state.player.w/2, state.player.y + state.player.h - 2,
+                state.player.w/2, 4, 0, 0, Math.PI*2);
     ctx.fill();
-    drawPlayer(state.player.px, state.player.py, state.player.dir);
+    drawPlayer(pdx, state.player.y, state.player.facing);
 
-    // 地图外边框 (深色厚框 + 内亮线模拟 MC 木框效果)
+    // 地图外边框
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 4;
     ctx.strokeRect(2, 2, W-4, H-4);
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
     ctx.lineWidth = 1;
     ctx.strokeRect(5, 5, W-10, H-10);
   }
 
-  function drawBoss(px, py, type) {
-    // Boss 占 2x2 = 80x80
-    const size = TILE * 2;
-    if (type === 'wither') {
-      // 凋灵: 三个骷髅头
-      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px+8, py+24, size-16, size-32);
-      // 三头
-      ctx.fillStyle = '#3a3a3a';
-      ctx.fillRect(px+4, py+8, 24, 24);
-      ctx.fillRect(px+28, py+4, 24, 24);
-      ctx.fillRect(px+52, py+8, 24, 24);
-      // 红眼
-      ctx.fillStyle = '#ff3a3a';
-      ctx.fillRect(px+8, py+18, 6, 4); ctx.fillRect(px+18, py+18, 6, 4);
-      ctx.fillRect(px+32, py+14, 6, 4); ctx.fillRect(px+42, py+14, 6, 4);
-      ctx.fillRect(px+56, py+18, 6, 4); ctx.fillRect(px+66, py+18, 6, 4);
-    } else if (type === 'enderdragon') {
-      // 末影龙: 紫黑大头
-      ctx.fillStyle = '#1a0a2a'; ctx.fillRect(px+8, py+8, size-16, size-16);
-      // 嘴
-      ctx.fillStyle = '#0a0a1a'; ctx.fillRect(px+12, py+48, size-24, 16);
-      // 牙
-      ctx.fillStyle = '#fff';
-      for (let i=0; i<4; i++) ctx.fillRect(px+18+i*12, py+50, 3, 6);
-      // 紫眼
-      ctx.fillStyle = '#cc4aff';
-      ctx.fillRect(px+18, py+20, 12, 8);
-      ctx.fillRect(px+50, py+20, 12, 8);
-      // 翅膀
-      ctx.fillStyle = '#2a0a3a';
-      ctx.fillRect(px-8, py+16, 16, 32);
-      ctx.fillRect(px+size-8, py+16, 16, 32);
-    } else if (type === 'guardian') {
-      // 守卫者: 蓝绿方块带刺
-      ctx.fillStyle = '#3a8a8a'; ctx.fillRect(px+12, py+12, size-24, size-24);
-      ctx.fillStyle = '#2a6a6a'; ctx.fillRect(px+16, py+16, size-32, size-32);
-      // 大眼
-      ctx.fillStyle = '#ff6a3a';
-      ctx.fillRect(px+size/2-12, py+size/2-12, 24, 24);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(px+size/2-6, py+size/2-6, 12, 12);
-      // 刺
-      ctx.fillStyle = '#3a8a8a';
-      ctx.fillRect(px+size/2-2, py+2, 4, 10);
-      ctx.fillRect(px+size/2-2, py+size-12, 4, 10);
-      ctx.fillRect(px+2, py+size/2-2, 10, 4);
-      ctx.fillRect(px+size-12, py+size/2-2, 10, 4);
+  function drawBackgroundHills() {
+    // 远处剪影
+    const off = state.camX * 0.3;
+    ctx.fillStyle = '#5a8ab8';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 30) {
+      const wx = x + off;
+      const yy = H - 110 + Math.sin(wx * 0.012) * 30 + Math.cos(wx * 0.03) * 8;
+      ctx.lineTo(x, yy);
     }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+    // 中景山
+    const off2 = state.camX * 0.55;
+    ctx.fillStyle = '#3a6a9a';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 22) {
+      const wx = x + off2;
+      const yy = H - 70 + Math.sin(wx * 0.018) * 22;
+      ctx.lineTo(x, yy);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
   }
 
-  function drawTile(tx, ty, type) {
-    const x = tx*TILE, y = ty*TILE;
+  function drawTile(x, y, type, tx, ty) {
     switch(type) {
-      case T.GRASS:
-        ctx.fillStyle = '#4a8a3a'; ctx.fillRect(x,y,TILE,TILE);
-        // 草纹理
-        ctx.fillStyle = '#5fa84a';
-        for (let i=0;i<5;i++) {
-          const px = x + ((tx*7+i*11) % TILE);
-          const py = y + ((ty*5+i*13) % TILE);
-          ctx.fillRect(px, py, 3, 3);
-        }
-        ctx.fillStyle = '#3a6a2a';
-        ctx.fillRect(x+(tx*3%TILE), y+(ty*7%TILE), 2, 2);
-        break;
-      case T.DIRT:
-        ctx.fillStyle = '#7a4a2a'; ctx.fillRect(x,y,TILE,TILE);
+      case T.GRASS: {
+        // 草地: 顶 6px 亮绿, 下方土色 (侧视典型 MC)
+        ctx.fillStyle = '#7a4a2a'; ctx.fillRect(x, y+6, TILE, TILE-6);
         ctx.fillStyle = '#5a3a1a';
-        for (let i=0;i<4;i++) {
-          ctx.fillRect(x+((tx+i*5)%TILE), y+((ty+i*7)%TILE), 3, 3);
-        }
+        ctx.fillRect(x+(tx*3)%TILE, y+10+(ty)%(TILE-12), 3, 3);
+        ctx.fillRect(x+(tx*7+11)%TILE, y+18+(ty*3)%(TILE-20), 3, 3);
+        ctx.fillStyle = '#5a9a3a'; ctx.fillRect(x, y, TILE, 7);
+        ctx.fillStyle = '#7fbe5a'; ctx.fillRect(x, y, TILE, 3);
+        // 草尖
+        ctx.fillStyle = '#5a9a3a';
+        ctx.fillRect(x+3, y-2, 2, 3);
+        ctx.fillRect(x+13, y-3, 2, 4);
+        ctx.fillRect(x+22, y-2, 2, 3);
+        break;
+      }
+      case T.DIRT:
+        ctx.fillStyle = '#7a4a2a'; ctx.fillRect(x, y, TILE, TILE);
+        ctx.fillStyle = '#5a3a1a';
+        for (let i=0;i<4;i++) ctx.fillRect(x+((tx+i*5)%TILE), y+((ty+i*7)%TILE), 3, 3);
         break;
       case T.STONE:
-        ctx.fillStyle = '#8a8a8a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#8a8a8a'; ctx.fillRect(x, y, TILE, TILE);
         ctx.fillStyle = '#6a6a6a';
         ctx.fillRect(x+3, y+3, TILE-6, TILE-6);
         ctx.fillStyle = '#aaa';
-        ctx.fillRect(x+8, y+8, 4, 4);
-        ctx.fillRect(x+24, y+18, 6, 4);
+        ctx.fillRect(x+6, y+6, 4, 3);
+        ctx.fillRect(x+20, y+18, 5, 3);
         break;
-      case T.WATER:
-        ctx.fillStyle = '#3a6acb'; ctx.fillRect(x,y,TILE,TILE);
+      case T.WATER: {
+        ctx.fillStyle = '#3a6acb'; ctx.fillRect(x, y, TILE, TILE);
+        const tt = Date.now()/600;
         ctx.fillStyle = '#5f8de0';
-        const t = Date.now()/600;
-        ctx.fillRect(x+2, y+8+Math.sin(t+tx)*1, TILE-4, 2);
-        ctx.fillRect(x+2, y+24+Math.cos(t+ty)*1, TILE-4, 2);
+        ctx.fillRect(x+2, y+8+Math.sin(tt+tx)*1, TILE-4, 2);
+        ctx.fillRect(x+2, y+20+Math.cos(tt+ty)*1, TILE-4, 2);
         break;
-      case T.TREE:
-        // 草地底色
-        ctx.fillStyle = '#4a8a3a'; ctx.fillRect(x,y,TILE,TILE);
-        // 树叶 (顶部 28x28 偏移)
-        ctx.fillStyle = '#2a6a1a';
-        ctx.fillRect(x+4, y+2, TILE-8, 24);
-        ctx.fillStyle = '#3a8a2a';
-        ctx.fillRect(x+6, y+4, TILE-12, 18);
+      }
+      case T.TREE_TRUNK:
+        ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x+TILE/2-4, y, 8, TILE);
+        ctx.fillStyle = '#3a2a0a'; ctx.fillRect(x+TILE/2-4, y, 2, TILE);
+        break;
+      case T.TREE_LEAVES:
+        ctx.fillStyle = '#2a6a1a'; ctx.fillRect(x-2, y, TILE+4, TILE);
+        ctx.fillStyle = '#3a8a2a'; ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
         ctx.fillStyle = '#5fbf4a';
-        ctx.fillRect(x+10, y+8, 6, 4);
-        // 树干 (底部 8x12)
-        ctx.fillStyle = '#5a3a1a';
-        ctx.fillRect(x+TILE/2-4, y+TILE-12, 8, 12);
-        break;
-      case T.SAND:
-        ctx.fillStyle = '#e8d57a'; ctx.fillRect(x,y,TILE,TILE);
-        ctx.fillStyle = '#d4bf5a';
-        ctx.fillRect(x+5, y+10, 3, 2);
-        ctx.fillRect(x+22, y+25, 3, 2);
-        break;
-      case T.PATH:
-        ctx.fillStyle = '#a89a6a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillRect(x+6, y+6, 4, 4);
+        ctx.fillRect(x+20, y+14, 4, 4);
         break;
       case T.FLOWER:
-        ctx.fillStyle = '#4a8a3a'; ctx.fillRect(x,y,TILE,TILE);
-        ctx.fillStyle = '#5fa84a';
-        for (let i=0;i<3;i++) ctx.fillRect(x+(tx*7+i*11)%TILE, y+(ty*5+i*13)%TILE, 3, 3);
-        // 花
-        ctx.fillStyle = '#cc3a3a';
-        ctx.fillRect(x+TILE/2-4, y+TILE/2-4, 8, 8);
-        ctx.fillStyle = '#ffd54a';
-        ctx.fillRect(x+TILE/2-2, y+TILE/2-2, 4, 4);
-        ctx.fillStyle = '#2a5a1a';
-        ctx.fillRect(x+TILE/2-1, y+TILE/2+4, 2, 6);
+        // 花茎和花头, 背景透明 (天空可见)
+        ctx.fillStyle = '#2a6a1a'; ctx.fillRect(x+TILE/2-1, y+TILE-12, 2, 12);
+        ctx.fillStyle = '#cc3a3a'; ctx.fillRect(x+TILE/2-4, y+TILE-18, 8, 6);
+        ctx.fillStyle = '#ffd54a'; ctx.fillRect(x+TILE/2-2, y+TILE-16, 4, 3);
         break;
-      case T.PORTAL:
-        // 紫色脉动 (末地传送门感)
-        ctx.fillStyle = '#2a1a3a'; ctx.fillRect(x,y,TILE,TILE);
+      case T.PORTAL: {
         const pulse = (Math.sin(Date.now()/200)+1)/2;
+        ctx.fillStyle = '#2a1a3a'; ctx.fillRect(x, y, TILE, TILE);
         ctx.fillStyle = `rgb(${120+pulse*80},${60+pulse*60},${200})`;
-        ctx.fillRect(x+4, y+4, TILE-8, TILE-8);
+        ctx.fillRect(x+3, y+3, TILE-6, TILE-6);
         ctx.fillStyle = '#fff';
         ctx.globalAlpha = 0.4 + pulse*0.4;
-        ctx.fillRect(x+12, y+12, 4, 4);
-        ctx.fillRect(x+24, y+8, 3, 3);
-        ctx.fillRect(x+8, y+28, 3, 3);
-        ctx.fillRect(x+28, y+24, 4, 4);
+        ctx.fillRect(x+8, y+8, 3, 3);
+        ctx.fillRect(x+20, y+6, 3, 3);
+        ctx.fillRect(x+6, y+22, 3, 3);
+        ctx.fillRect(x+22, y+20, 3, 3);
         ctx.globalAlpha = 1;
         break;
+      }
       case T.COAL:
       case T.IRON:
       case T.GOLD:
       case T.DIAMOND:
       case T.EMERALD: {
-        // 石头底色
-        ctx.fillStyle = '#8a8a8a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#8a8a8a'; ctx.fillRect(x, y, TILE, TILE);
         ctx.fillStyle = '#6a6a6a';
         ctx.fillRect(x+3, y+3, TILE-6, TILE-6);
-        // 矿石颗粒
-        const oreColor = MINEABLE[type].color;
-        ctx.fillStyle = oreColor;
-        const positions = [[6,8],[24,10],[10,22],[26,26],[16,16]];
-        positions.forEach(([dx,dy]) => ctx.fillRect(x+dx, y+dy, 5, 5));
-        // 闪光高光
+        ctx.fillStyle = MINEABLE[type].color;
+        [[5,6],[20,8],[8,20],[22,22],[14,14]].forEach(([dx,dy]) => ctx.fillRect(x+dx, y+dy, 4, 4));
         ctx.fillStyle = '#fff';
         ctx.globalAlpha = 0.5;
-        ctx.fillRect(x+7, y+9, 2, 2);
-        ctx.fillRect(x+25, y+11, 2, 2);
+        ctx.fillRect(x+6, y+7, 2, 2);
+        ctx.fillRect(x+21, y+9, 2, 2);
         ctx.globalAlpha = 1;
         break;
       }
-      case T.BOSS_FLOOR: {
-        // 黑曜石风格平台
-        ctx.fillStyle = '#1a1a2a'; ctx.fillRect(x,y,TILE,TILE);
-        ctx.fillStyle = '#2a1a3a';
-        ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
+      case T.BOSS_FLOOR:
+        ctx.fillStyle = '#1a1a2a'; ctx.fillRect(x, y, TILE, TILE);
+        ctx.fillStyle = '#2a1a3a'; ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
         ctx.fillStyle = '#5a3a7a';
-        if ((tx+ty) % 2 === 0) ctx.fillRect(x+14, y+14, 4, 4);
+        if ((tx+ty) % 2 === 0) ctx.fillRect(x+12, y+12, 4, 4);
         break;
-      }
+      case T.BEDROCK:
+        ctx.fillStyle = '#3a3a3a'; ctx.fillRect(x, y, TILE, TILE);
+        ctx.fillStyle = '#222';
+        ctx.fillRect(x+2, y+2, 8, 6);
+        ctx.fillRect(x+12, y+10, 6, 4);
+        ctx.fillRect(x+20, y+4, 6, 6);
+        ctx.fillRect(x+6, y+18, 4, 6);
+        break;
+      case T.CLOUD:
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillRect(x, y+4, TILE, TILE-8);
+        ctx.fillRect(x+4, y, TILE-8, 4);
+        ctx.fillRect(x+4, y+TILE-4, TILE-8, 4);
+        break;
     }
   }
 
-  // === 玩家 (Steve) ===
-  function drawPlayer(px, py, dir) {
-    const s = 4; // pixel scale  (8x8 char) -> 32px
-    const x = px + (TILE - s*8)/2;
-    const y = py + (TILE - s*10)/2;
+  // === Steve 侧视 (脸朝 left/right) ===
+  function drawPlayer(px, py, facing) {
+    const p = state.player;
+    const s = 3; // 像素缩放
+    const x = px + (p.w - s*7)/2;
+    const y = py + (p.h - s*12)/2;
+    // 走路动画
+    const walking = Math.abs(p.vx) > 0.1 && p.onGround;
+    const phase = walking ? Math.floor(Date.now()/110)%2 : 0;
+    const jumping = !p.onGround;
+
+    // 翻转处理
+    const flip = (facing === 'left');
+    const sx = (v) => flip ? x + s*7 - v - s : x + v;
+
     // 头
-    ctx.fillStyle = '#f5cba7'; ctx.fillRect(x, y, s*8, s*4);
+    ctx.fillStyle = '#f5cba7';
+    ctx.fillRect(x, y, s*7, s*4);
     // 头发
-    ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x, y, s*8, s*1);
-    ctx.fillRect(x, y+s, s*1, s*2);
-    ctx.fillRect(x+s*7, y+s, s*1, s*2);
-    // 眼睛 (根据方向)
+    ctx.fillStyle = '#5a3a1a';
+    ctx.fillRect(x, y, s*7, s);
+    ctx.fillRect(x, y, s, s*2);
+    ctx.fillRect(x+s*6, y, s, s*2);
+    // 后脑头发
+    if (flip) ctx.fillRect(x+s*5, y, s*2, s*3);
+    else ctx.fillRect(x, y, s*2, s*3);
+    // 眼睛 (朝向)
     ctx.fillStyle = '#fff';
-    if (dir === 'left') { ctx.fillRect(x+s*1, y+s*2, s, s); }
-    else if (dir === 'right') { ctx.fillRect(x+s*6, y+s*2, s, s); }
-    else {
-      ctx.fillRect(x+s*2, y+s*2, s, s);
-      ctx.fillRect(x+s*5, y+s*2, s, s);
-    }
+    ctx.fillRect(sx(s*3), y+s*2, s*2, s);
     ctx.fillStyle = '#222';
-    if (dir === 'left') { ctx.fillRect(x+s*1, y+s*2, s/2, s); }
-    else if (dir === 'right') { ctx.fillRect(x+s*6+s/2, y+s*2, s/2, s); }
-    else {
-      ctx.fillRect(x+s*2+s/4, y+s*2+s/4, s/2, s/2);
-      ctx.fillRect(x+s*5+s/4, y+s*2+s/4, s/2, s/2);
-    }
+    ctx.fillRect(sx(s*4), y+s*2, s, s);
     // 嘴
     ctx.fillStyle = '#aa6a4a';
-    ctx.fillRect(x+s*3, y+s*3+s/2, s*2, s/2);
+    ctx.fillRect(sx(s*3), y+s*3+1, s*2, s-1);
     // 身体 (青色衣服)
-    ctx.fillStyle = '#3aa3c4'; ctx.fillRect(x, y+s*4, s*8, s*3);
-    ctx.fillStyle = '#2a8aa8'; ctx.fillRect(x, y+s*4, s*1, s*3);
+    ctx.fillStyle = '#3aa3c4';
+    ctx.fillRect(x, y+s*4, s*7, s*4);
+    ctx.fillStyle = '#2a8aa8';
+    if (flip) ctx.fillRect(x+s*6, y+s*4, s, s*4);
+    else ctx.fillRect(x, y+s*4, s, s*4);
+    // 手臂 (摆动)
+    const armSwing = walking ? Math.sin(Date.now()/110)*2 : 0;
+    ctx.fillStyle = '#3aa3c4';
+    ctx.fillRect(sx(-s), y+s*4 + (flip?-armSwing:armSwing), s, s*3);
+    ctx.fillRect(sx(s*7), y+s*4 + (flip?armSwing:-armSwing), s, s*3);
     // 腿
     ctx.fillStyle = '#3a3aaa';
-    // 走路动画
-    const walking = state.player.moving;
-    const phase = walking ? Math.floor(Date.now()/120)%2 : 0;
-    if (phase === 0) {
-      ctx.fillRect(x+s, y+s*7, s*3, s*3);
-      ctx.fillRect(x+s*4, y+s*7, s*3, s*3);
+    if (jumping) {
+      // 跳起时双腿稍弯
+      ctx.fillRect(x+s, y+s*8, s*2, s*4);
+      ctx.fillRect(x+s*4, y+s*8, s*2, s*4);
+    } else if (phase === 0) {
+      ctx.fillRect(x+s, y+s*8, s*2, s*4);
+      ctx.fillRect(x+s*4, y+s*8, s*2, s*4);
     } else {
-      ctx.fillRect(x, y+s*7, s*3, s*3);
-      ctx.fillRect(x+s*5, y+s*7, s*3, s*3);
+      // 一前一后
+      ctx.fillRect(x, y+s*8, s*2, s*4);
+      ctx.fillRect(x+s*5, y+s*8, s*2, s*4);
     }
   }
 
-  // === 怪物 ===
+  // === 怪物侧视 ===
   function drawMob(px, py, type, scale=1, g=ctx) {
-    const ctx = g;  // 局部遮蔽，让下面所有 ctx 调用都指向 g
-    const m = MOBS[type];
-    const s = 4 * scale;
-    const x = px + (TILE*scale - s*8)/2;
-    const y = py + (TILE*scale - s*10)/2;
+    const ctx = g;
+    const s = 3 * scale;
+    const x = px;
+    const y = py;
     if (type === 'zombie') {
-      // 头
-      ctx.fillStyle = '#5fbf5f'; ctx.fillRect(x, y, s*8, s*4);
-      ctx.fillStyle = '#3a8a3a'; ctx.fillRect(x, y, s*8, s); // 头顶阴影
-      // 眼
-      ctx.fillStyle = '#000'; ctx.fillRect(x+s*2, y+s*2, s, s); ctx.fillRect(x+s*5, y+s*2, s, s);
-      // 嘴
-      ctx.fillStyle = '#1a3a1a'; ctx.fillRect(x+s*3, y+s*3+s/2, s*2, s/2);
-      // 身体
-      ctx.fillStyle = '#3a4a8a'; ctx.fillRect(x, y+s*4, s*8, s*3);
-      // 手前伸 (僵尸特征)
+      ctx.fillStyle = '#5fbf5f'; ctx.fillRect(x, y, s*7, s*4); // 头
+      ctx.fillStyle = '#3a8a3a'; ctx.fillRect(x, y, s*7, s);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(x+s*4, y+s*2, s, s); // 眼
+      ctx.fillStyle = '#1a3a1a'; ctx.fillRect(x+s*3, y+s*3, s*2, s/2);
+      ctx.fillStyle = '#3a4a8a'; ctx.fillRect(x, y+s*4, s*7, s*4); // 身体
+      // 手前伸 (侧视: 一只手往前)
       ctx.fillStyle = '#5fbf5f';
-      ctx.fillRect(x-s, y+s*4, s, s*3);
-      ctx.fillRect(x+s*8, y+s*4, s, s*3);
+      ctx.fillRect(x+s*7, y+s*4, s*2, s*3);
       // 腿
       ctx.fillStyle = '#2a3a6a';
-      ctx.fillRect(x+s, y+s*7, s*3, s*3);
-      ctx.fillRect(x+s*4, y+s*7, s*3, s*3);
+      ctx.fillRect(x+s, y+s*8, s*2, s*4);
+      ctx.fillRect(x+s*4, y+s*8, s*2, s*4);
     } else if (type === 'skeleton') {
-      ctx.fillStyle = '#e0e0e0'; ctx.fillRect(x, y, s*8, s*4);
-      ctx.fillStyle = '#000'; ctx.fillRect(x+s*2, y+s*2, s, s); ctx.fillRect(x+s*5, y+s*2, s, s);
-      ctx.fillRect(x+s*3, y+s*3+s/2, s*2, s/2);
-      ctx.fillStyle = '#bbb'; ctx.fillRect(x, y+s*4, s*8, s*3);
-      // 弓 (右手)
+      ctx.fillStyle = '#e0e0e0'; ctx.fillRect(x, y, s*7, s*4);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(x+s*4, y+s*2, s, s);
+      ctx.fillRect(x+s*3, y+s*3, s*2, s/2);
+      ctx.fillStyle = '#bbb'; ctx.fillRect(x, y+s*4, s*7, s*4);
+      // 弓 (前面)
       ctx.fillStyle = '#5a3a1a';
-      ctx.fillRect(x+s*8, y+s*4, s, s*3);
+      ctx.fillRect(x+s*7, y+s*4, s, s*4);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x+s*8, y+s*5, s*2, s);
       ctx.fillStyle = '#aaa';
-      ctx.fillRect(x+s, y+s*7, s*3, s*3);
-      ctx.fillRect(x+s*4, y+s*7, s*3, s*3);
+      ctx.fillRect(x+s, y+s*8, s*2, s*4);
+      ctx.fillRect(x+s*4, y+s*8, s*2, s*4);
     } else if (type === 'creeper') {
-      ctx.fillStyle = '#6cbf3f'; ctx.fillRect(x, y, s*8, s*4);
-      // 苦力怕脸
+      ctx.fillStyle = '#6cbf3f'; ctx.fillRect(x, y, s*7, s*4);
       ctx.fillStyle = '#000';
       ctx.fillRect(x+s*1, y+s*1, s*2, s*2);
-      ctx.fillRect(x+s*5, y+s*1, s*2, s*2);
-      ctx.fillRect(x+s*3, y+s*3, s*2, s);
-      ctx.fillRect(x+s*2, y+s*3+s, s, s);
-      ctx.fillRect(x+s*5, y+s*3+s, s, s);
-      // 身体 (4腿站立)
-      ctx.fillStyle = '#5cae35'; ctx.fillRect(x, y+s*4, s*8, s*4);
+      ctx.fillRect(x+s*4, y+s*1, s*2, s*2);
+      ctx.fillRect(x+s*3, y+s*3, s, s);
+      ctx.fillStyle = '#5cae35'; ctx.fillRect(x, y+s*4, s*7, s*4);
       ctx.fillStyle = '#4a9c25';
-      ctx.fillRect(x, y+s*8, s*3, s*2);
-      ctx.fillRect(x+s*5, y+s*8, s*3, s*2);
+      ctx.fillRect(x, y+s*8, s*2, s*4);
+      ctx.fillRect(x+s*5, y+s*8, s*2, s*4);
     } else if (type === 'spider') {
-      ctx.fillStyle = '#3a1a1a'; ctx.fillRect(x+s, y+s*2, s*6, s*5);
-      // 红眼
+      ctx.fillStyle = '#3a1a1a'; ctx.fillRect(x+s, y+s*3, s*6, s*5);
       ctx.fillStyle = '#ff3a3a';
-      ctx.fillRect(x+s*2, y+s*3, s, s);
-      ctx.fillRect(x+s*5, y+s*3, s, s);
-      // 8条腿
+      ctx.fillRect(x+s*2, y+s*4, s, s);
+      ctx.fillRect(x+s*5, y+s*4, s, s);
       ctx.fillStyle = '#1a0a0a';
-      ctx.fillRect(x-s, y+s*3, s, s);
+      // 8 条腿 (侧视: 4 条左 4 条右)
       ctx.fillRect(x-s, y+s*5, s, s);
-      ctx.fillRect(x+s*8, y+s*3, s, s);
-      ctx.fillRect(x+s*8, y+s*5, s, s);
-      ctx.fillRect(x, y+s*8, s*2, s);
-      ctx.fillRect(x+s*6, y+s*8, s*2, s);
+      ctx.fillRect(x-s, y+s*7, s, s);
+      ctx.fillRect(x+s*7, y+s*5, s, s);
+      ctx.fillRect(x+s*7, y+s*7, s, s);
+      ctx.fillRect(x, y+s*9, s*2, s);
+      ctx.fillRect(x+s*5, y+s*9, s*2, s);
     } else if (type === 'slime') {
-      // 半透明绿块
-      ctx.fillStyle = '#7fce5f'; ctx.fillRect(x, y+s*3, s*8, s*6);
-      ctx.fillStyle = '#a8e683'; ctx.fillRect(x+s, y+s*4, s*6, s*4);
+      ctx.fillStyle = '#7fce5f'; ctx.fillRect(x, y+s*4, s*7, s*5);
+      ctx.fillStyle = '#a8e683'; ctx.fillRect(x+s, y+s*5, s*5, s*3);
       ctx.fillStyle = '#000';
       ctx.fillRect(x+s*2, y+s*5, s, s);
       ctx.fillRect(x+s*5, y+s*5, s, s);
-      ctx.fillRect(x+s*3, y+s*7, s*2, s/2);
+      ctx.fillRect(x+s*3, y+s*7, s, s);
     } else if (type === 'enderman') {
-      // 高瘦
-      ctx.fillStyle = '#0a0a0a'; ctx.fillRect(x+s*2, y, s*4, s*10);
-      ctx.fillStyle = '#0a0a0a';
+      ctx.fillStyle = '#0a0a0a'; ctx.fillRect(x+s*2, y, s*3, s*12);
       ctx.fillRect(x+s, y+s*4, s, s*4);
-      ctx.fillRect(x+s*6, y+s*4, s, s*4);
-      // 紫色眼睛
+      ctx.fillRect(x+s*5, y+s*4, s, s*4);
       ctx.fillStyle = '#cc4aff';
       ctx.fillRect(x+s*3, y+s*2, s, s);
       ctx.fillRect(x+s*4, y+s*2, s, s);
+    }
+  }
+
+  function drawBoss(px, py, type) {
+    const size = TILE * 2;
+    if (type === 'wither') {
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px+8, py+24, size-16, size-32);
+      ctx.fillStyle = '#3a3a3a';
+      ctx.fillRect(px+4, py+8, 20, 20);
+      ctx.fillRect(px+22, py+4, 20, 20);
+      ctx.fillRect(px+40, py+8, 20, 20);
+      ctx.fillStyle = '#ff3a3a';
+      ctx.fillRect(px+8, py+16, 4, 3); ctx.fillRect(px+16, py+16, 4, 3);
+      ctx.fillRect(px+26, py+12, 4, 3); ctx.fillRect(px+34, py+12, 4, 3);
+      ctx.fillRect(px+44, py+16, 4, 3); ctx.fillRect(px+52, py+16, 4, 3);
+    } else if (type === 'enderdragon') {
+      ctx.fillStyle = '#1a0a2a'; ctx.fillRect(px+6, py+6, size-12, size-12);
+      ctx.fillStyle = '#0a0a1a'; ctx.fillRect(px+10, py+40, size-20, 14);
+      ctx.fillStyle = '#fff';
+      for (let i=0; i<4; i++) ctx.fillRect(px+16+i*10, py+42, 3, 5);
+      ctx.fillStyle = '#cc4aff';
+      ctx.fillRect(px+14, py+18, 10, 6);
+      ctx.fillRect(px+40, py+18, 10, 6);
+      ctx.fillStyle = '#2a0a3a';
+      ctx.fillRect(px-10, py+14, 14, 28);
+      ctx.fillRect(px+size-4, py+14, 14, 28);
+    } else if (type === 'guardian') {
+      ctx.fillStyle = '#3a8a8a'; ctx.fillRect(px+10, py+10, size-20, size-20);
+      ctx.fillStyle = '#2a6a6a'; ctx.fillRect(px+14, py+14, size-28, size-28);
+      ctx.fillStyle = '#ff6a3a';
+      ctx.fillRect(px+size/2-10, py+size/2-10, 20, 20);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(px+size/2-5, py+size/2-5, 10, 10);
+      ctx.fillStyle = '#3a8a8a';
+      ctx.fillRect(px+size/2-2, py+2, 4, 8);
+      ctx.fillRect(px+size/2-2, py+size-10, 4, 8);
+      ctx.fillRect(px+2, py+size/2-2, 8, 4);
+      ctx.fillRect(px+size-10, py+size/2-2, 8, 4);
     }
   }
 
@@ -1237,77 +1307,125 @@
     const cx = c.getContext('2d');
     cx.imageSmoothingEnabled = false;
     cx.clearRect(0,0,48,48);
-    // 把 (0,0,TILE,TILE) 居中到 48x48
     cx.save();
-    cx.translate(4, 4);
+    cx.translate(6, 4);
     drawMob(0, 0, type, 1, cx);
     cx.restore();
   }
 
-  // ====== 移动 ======
-  function tryMove(dir) {
+  // 任何覆盖层可见时暂停物理 (菜单/胜负/合成)
+  function isOverlayVisible() {
+    const ids = ['battleOverlay','winOverlay','loseOverlay','craftOverlay','menuOverlay'];
+    return ids.some(id => {
+      const el = document.getElementById(id);
+      return el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
+    });
+  }
+
+  // ====== 物理 (重力+跳跃+碰撞) ======
+  function updatePhysics() {
     if (state.inBattle || state.inMining) return;
-    if (state.player.moving) { state.pendingDir = dir; return; }
-    state.player.dir = dir;
-    let nx = state.player.tx, ny = state.player.ty;
-    if (dir === 'up') ny--;
-    else if (dir === 'down') ny++;
-    else if (dir === 'left') nx--;
-    else if (dir === 'right') nx++;
-    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return;
-    const tileType = state.map[ny][nx];
-    // Boss 碰撞 (Boss 占 2x2)
-    if (state.inBoss && state.boss) {
-      const b = state.boss;
-      if (nx >= b.x && nx <= b.x+1 && ny >= b.y && ny <= b.y+1) {
+    if (isOverlayVisible()) {
+      state.keys.left = state.keys.right = state.keys.jump = false;
+      return;
+    }
+    const p = state.player;
+    const k = state.keys;
+
+    // 水平输入
+    if (k.left && !k.right)      { p.vx = -MOVE_SPEED; p.facing = 'left'; }
+    else if (k.right && !k.left) { p.vx =  MOVE_SPEED; p.facing = 'right'; }
+    else                          p.vx = 0;
+
+    // 跳跃 (只有 onGround 才能跳)
+    if (k.jump && p.onGround) {
+      p.vy = JUMP_V;
+      p.onGround = false;
+      sndStep();
+      k.jump = false; // edge trigger: 重新按才能再跳
+    }
+
+    // 重力
+    p.vy += GRAVITY;
+    if (p.vy > MAX_FALL) p.vy = MAX_FALL;
+
+    // 水平移动 + 碰撞 (可能触发挖矿/战斗)
+    if (p.vx !== 0) {
+      const next = p.x + p.vx;
+      const hit = horizontalSweep(p, next);
+      if (hit) {
+        // 撞到固体: 检查是否是怪物附近 / 可挖矿
+        const tileType = state.map[hit.ty][hit.tx];
+        if (MINEABLE[tileType]) {
+          const ore = MINEABLE[tileType];
+          if (state.sword < ore.need) {
+            flashMessage(t('needSword', { n: ore.need }));
+            // 卡墙
+            p.x = (p.vx > 0) ? hit.tx*TILE - p.w : (hit.tx+1)*TILE;
+          } else {
+            startMining(hit.tx, hit.ty, tileType);
+            p.x = (p.vx > 0) ? hit.tx*TILE - p.w : (hit.tx+1)*TILE;
+          }
+        } else {
+          // 普通固体: 停下
+          p.x = (p.vx > 0) ? hit.tx*TILE - p.w : (hit.tx+1)*TILE;
+        }
+        p.vx = 0;
+      } else {
+        p.x = next;
+      }
+    }
+
+    // 垂直移动 + 碰撞
+    if (p.vy !== 0) {
+      const next = p.y + p.vy;
+      const hit = verticalSweep(p, next);
+      if (hit) {
+        if (p.vy > 0) {
+          p.y = hit.ty*TILE - p.h;
+          p.onGround = true;
+        } else {
+          p.y = (hit.ty+1)*TILE;
+        }
+        p.vy = 0;
+      } else {
+        p.y = next;
+        p.onGround = false;
+      }
+    }
+
+    // 进一步确认: 站在地面上 (用脚尖向下探测)
+    if (p.vy === 0 && !p.onGround) {
+      const footY = Math.floor((p.y + p.h + 1) / TILE);
+      const lx = Math.floor((p.x + 2) / TILE);
+      const rx = Math.floor((p.x + p.w - 3) / TILE);
+      if (isSolidAt(lx, footY) || isSolidAt(rx, footY)) p.onGround = true;
+    }
+
+    // 镜头跟随
+    state.camX = clamp(p.x + p.w/2 - W/2, 0, MAP_COLS*TILE - W);
+
+    // 怪物碰撞
+    if (!state.inBattle && !state.inMining) {
+      for (const m of state.mobs) {
+        if (m.dead) continue;
+        if (rectOverlap(p, m)) {
+          startBattle(m);
+          return;
+        }
+      }
+      // Boss 碰撞 (击败后 hp=0 不再触发)
+      if (state.boss && state.boss.hp > 0 && rectOverlap(p, state.boss)) {
         startBossBattle();
         return;
       }
     }
-    // 检查是否有活着的怪物
-    const mob = state.mobs.find(m => !m.dead && m.x === nx && m.y === ny);
-    if (mob) {
-      startBattle(mob);
-      return;
-    }
-    // 可挖掘 tile
-    if (MINEABLE[tileType]) {
-      const ore = MINEABLE[tileType];
-      if (state.sword < ore.need) {
-        flashMessage(t('needSword', { n: ore.need }));
-        return;
-      }
-      startMining(nx, ny, tileType);
-      return;
-    }
-    if (!PASSABLE.has(tileType)) return;
-    state.player.tx = nx; state.player.ty = ny;
-    state.player.moving = true;
-    sndStep();
-  }
 
-  function updateMovement() {
-    const p = state.player;
-    if (!p.moving) {
-      // 检查 pendingDir
-      if (state.pendingDir) {
-        const d = state.pendingDir; state.pendingDir = null;
-        tryMove(d);
-      }
-      return;
-    }
-    const targetX = p.tx * TILE;
-    const targetY = p.ty * TILE;
-    const speed = 4; // px/frame
-    if (p.px < targetX) p.px = Math.min(p.px + speed, targetX);
-    else if (p.px > targetX) p.px = Math.max(p.px - speed, targetX);
-    if (p.py < targetY) p.py = Math.min(p.py + speed, targetY);
-    else if (p.py > targetY) p.py = Math.max(p.py - speed, targetY);
-    if (p.px === targetX && p.py === targetY) {
-      p.moving = false;
-      // 检查是否踩到传送门
-      if (p.tx === state.portal.x && p.ty === state.portal.y) {
-        // 必须打败所有怪物才能进
+    // 传送门: 检查脚下/中心 tile
+    if (state.portal.x >= 0) {
+      const ptx = Math.floor((p.x + p.w/2) / TILE);
+      const pty = Math.floor((p.y + p.h/2) / TILE);
+      if (state.map[pty]?.[ptx] === T.PORTAL) {
         const alive = state.mobs.filter(m => !m.dead).length;
         if (alive === 0) {
           sndPortal();
@@ -1316,6 +1434,90 @@
           flashMessage(t('mobsLeft', { n: alive }));
         }
       }
+    }
+
+    // 掉出地图 (基岩之下不可能, 但 vy 失控时保险)
+    if (p.y > MAP_ROWS * TILE + 200) {
+      state.hp = 0;
+      updateHud();
+      showLose();
+    }
+  }
+
+  function rectOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x &&
+           a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  // 水平横扫: 返回 {tx, ty} 第一个挡路块, 或 null
+  function horizontalSweep(p, nextX) {
+    const targetLeft  = Math.min(p.x, nextX);
+    const targetRight = Math.max(p.x + p.w, nextX + p.w) - 1;
+    const top = Math.floor(p.y / TILE);
+    const bot = Math.floor((p.y + p.h - 1) / TILE);
+    if (nextX > p.x) {
+      const tx = Math.floor((nextX + p.w - 1) / TILE);
+      for (let ty = top; ty <= bot; ty++) {
+        if (isSolidAt(tx, ty)) return { tx, ty };
+      }
+    } else if (nextX < p.x) {
+      const tx = Math.floor(nextX / TILE);
+      for (let ty = top; ty <= bot; ty++) {
+        if (isSolidAt(tx, ty)) return { tx, ty };
+      }
+    }
+    return null;
+  }
+
+  function verticalSweep(p, nextY) {
+    const lx = Math.floor(p.x / TILE);
+    const rx = Math.floor((p.x + p.w - 1) / TILE);
+    if (nextY > p.y) {
+      const ty = Math.floor((nextY + p.h - 1) / TILE);
+      for (let tx = lx; tx <= rx; tx++) {
+        if (isSolidAt(tx, ty)) return { tx, ty };
+      }
+    } else if (nextY < p.y) {
+      const ty = Math.floor(nextY / TILE);
+      for (let tx = lx; tx <= rx; tx++) {
+        if (isSolidAt(tx, ty)) return { tx, ty };
+      }
+    }
+    return null;
+  }
+
+  // 手动挖矿 (按 E 键): 挖玩家面朝方向的方块
+  function tryMineAction() {
+    if (state.inBattle || state.inMining) return;
+    const p = state.player;
+    const dir = (p.facing === 'right') ? 1 : -1;
+    const tx = Math.floor((p.x + p.w/2 + dir * (p.w/2 + 4)) / TILE);
+    // 三种探测高度: 头/胸/脚, 取第一个可挖
+    const probes = [
+      Math.floor((p.y + 6) / TILE),
+      Math.floor((p.y + p.h/2) / TILE),
+      Math.floor((p.y + p.h - 4) / TILE),
+    ];
+    for (const ty of probes) {
+      const type = state.map[ty]?.[tx];
+      if (MINEABLE[type]) {
+        const ore = MINEABLE[type];
+        if (state.sword < ore.need) {
+          flashMessage(t('needSword', { n: ore.need }));
+          return;
+        }
+        startMining(tx, ty, type);
+        return;
+      }
+    }
+    // 试试脚下方块 (向下挖)
+    const downTy = Math.floor((p.y + p.h + 1) / TILE);
+    const downTx = Math.floor((p.x + p.w/2) / TILE);
+    const downType = state.map[downTy]?.[downTx];
+    if (MINEABLE[downType]) {
+      const ore = MINEABLE[downType];
+      if (state.sword >= ore.need) startMining(downTx, downTy, downType);
+      else flashMessage(t('needSword', { n: ore.need }));
     }
   }
 
@@ -1594,7 +1796,7 @@
         const mat = MINEABLE[mt.type].material;
         const amount = 1 + (mt.type === T.COAL || mt.type === T.IRON ? Math.floor(Math.random()*2) : 0);
         state.inventory[mat] = (state.inventory[mat] || 0) + amount;
-        state.map[mt.y][mt.x] = T.DIRT;
+        state.map[mt.y][mt.x] = T.AIR;
         state.score += 5;
         updateHud();
         setTimeout(() => {
@@ -1708,15 +1910,28 @@
     document.getElementById('loseOverlay').style.display = 'flex';
   }
 
-  // ====== 输入 ======
-  const keyMap = {
-    ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
-    w:'up', s:'down', a:'left', d:'right',
-    W:'up', S:'down', A:'left', D:'right'
+  // ====== 输入 (横版: 左/右走, 上/空格 跳, E 挖) ======
+  function setKey(name, down) {
+    if (state.inBattle || state.inMining) {
+      // 战斗中不响应行动键
+      if (!down) state.keys.left = state.keys.right = state.keys.jump = false;
+      return;
+    }
+    if (name === 'jump') {
+      if (down && !state.keys.jumpHeld) state.keys.jump = true;
+      state.keys.jumpHeld = down;
+    } else {
+      state.keys[name] = down;
+    }
+  }
+
+  const keyMapDown = {
+    ArrowLeft:'left', a:'left', A:'left',
+    ArrowRight:'right', d:'right', D:'right',
+    ArrowUp:'jump', w:'jump', W:'jump', ' ':'jump',
   };
   window.addEventListener('keydown', e => {
     if (state.inBattle) {
-      // 战斗中支持 1-4 选数字
       const idx = '1234'.indexOf(e.key);
       if (idx >= 0) {
         const btns = document.querySelectorAll('#qOptions .opt');
@@ -1725,33 +1940,38 @@
       }
       return;
     }
-    if (keyMap[e.key]) {
-      tryMove(keyMap[e.key]);
-      e.preventDefault();
-    }
+    if (e.repeat) return;
+    if (e.key === 'e' || e.key === 'E') { tryMineAction(); e.preventDefault(); return; }
+    const k = keyMapDown[e.key];
+    if (k) { setKey(k, true); e.preventDefault(); }
+  });
+  window.addEventListener('keyup', e => {
+    const k = keyMapDown[e.key];
+    if (k) { setKey(k, false); e.preventDefault(); }
   });
 
-  // 触屏方向键
-  document.querySelectorAll('#pad button[data-dir]').forEach(b => {
-    const fire = (e) => { e.preventDefault(); tryMove(b.dataset.dir); };
-    b.addEventListener('touchstart', fire, {passive:false});
-    b.addEventListener('mousedown', fire);
+  // 触屏按钮 (新布局: ← → 跳 挖)
+  function bindHoldButton(el, name) {
+    const press = (e) => { e.preventDefault(); setKey(name, true); };
+    const release = (e) => { e.preventDefault(); setKey(name, false); };
+    el.addEventListener('touchstart', press, {passive:false});
+    el.addEventListener('touchend', release, {passive:false});
+    el.addEventListener('touchcancel', release, {passive:false});
+    el.addEventListener('mousedown', press);
+    el.addEventListener('mouseup', release);
+    el.addEventListener('mouseleave', release);
+  }
+  function bindTapButton(el, fn) {
+    const f = (e) => { e.preventDefault(); fn(); };
+    el.addEventListener('touchstart', f, {passive:false});
+    el.addEventListener('mousedown', f);
+  }
+  document.querySelectorAll('#pad button[data-action]').forEach(b => {
+    const act = b.dataset.action;
+    if (act === 'left' || act === 'right') bindHoldButton(b, act);
+    else if (act === 'jump') bindHoldButton(b, 'jump');
+    else if (act === 'mine') bindTapButton(b, tryMineAction);
   });
-
-  // 滑动手势
-  let touchStart = null;
-  canvas.addEventListener('touchstart', e => {
-    const t = e.touches[0]; touchStart = { x:t.clientX, y:t.clientY };
-  }, {passive:true});
-  canvas.addEventListener('touchend', e => {
-    if (!touchStart) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
-    touchStart = null;
-    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-    if (Math.abs(dx) > Math.abs(dy)) tryMove(dx > 0 ? 'right' : 'left');
-    else tryMove(dy > 0 ? 'down' : 'up');
-  }, {passive:true});
 
   // ====== 菜单按钮 ======
   let selectedAge = 5;
@@ -1828,18 +2048,20 @@
 
   // ====== 主循环 ======
   function loop() {
-    updateMovement();
+    updatePhysics();
     draw();
     drawFlash();
     requestAnimationFrame(loop);
   }
 
   fitCanvas();
-  // 显示一张"等待开始"的草地预览
-  state.map = genMap(1);
-  state.mobs = []; state.portal = {x:-1,y:-1};
-  state.player.tx = Math.floor(COLS/2); state.player.ty = Math.floor(ROWS/2);
-  state.player.px = state.player.tx*TILE; state.player.py = state.player.ty*TILE;
+  // 显示预览地图
+  const preview = genMap(1);
+  state.map = preview.map;
+  state.mapHeights = preview.heights;
+  state.mobs = [];
+  state.portal = {x:-1, y:-1};
+  spawnPlayerOn(state.mapHeights, 4);
   loop();
 })();
 </script>
