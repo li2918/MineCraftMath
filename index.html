@@ -251,6 +251,7 @@
     </div>
     <div class="group">
       <span class="badge" id="hudSword">🗡️空手</span>
+      <span class="badge" id="hudPick">⛏️徒手</span>
       <span class="badge" id="hudPotion">🧪 0</span>
       <button class="tiny" id="btnCraft" data-i18n="btnBag">背包/合成</button>
       <button class="tiny" id="btnMenu" data-i18n="btnMenu">菜单</button>
@@ -343,6 +344,8 @@
     <p style="font-size:13px;color:#444">
       <span data-i18n="curEquip">当前装备:</span> <b id="curSword">空手</b>
       &nbsp;|&nbsp;
+      <span data-i18n="curPick">当前镐子:</span> <b id="curPick">徒手</b>
+      &nbsp;|&nbsp;
       <span data-i18n="curPot">治疗药水:</span> <b id="curPot">0</b>
     </p>
     <h2 style="margin-top:14px" data-i18n="craftSection">合成配方</h2>
@@ -363,7 +366,7 @@
   const I18N = {
     zh: {
       gameTitle:'🟩 方块数学冒险 🟫',
-      intro:'在方块世界里探险，遇到怪物答数学题，闯关收集钻石！',
+      intro:'在方块世界里探险，遇到怪物答数学题，闯关收集钻石！⛏️ 砍树、挖矿、合成更好的镐子！💀 每 5 关 Boss · 第 3/8/13… 关挖矿洞穴',
       chooseAge:'选择年龄',
       age5:'5 岁', age5desc:'数数·比大小·10以内加减',
       age6:'6 岁', age6desc:'20以内加减·形状',
@@ -376,6 +379,13 @@
       hudAgeUnit:'岁',
       btnBag:'背包/合成', btnMenu:'菜单',
       swordEmpty:'空手', swordWood:'木剑', swordStone:'石剑', swordIron:'铁剑', swordDiamond:'钻剑',
+      pickEmpty:'徒手', pickWood:'木镐', pickStone:'石镐', pickIron:'铁镐', pickDiamond:'钻镐',
+      rPick1:'木镐', rPick2:'石镐', rPick3:'铁镐', rPick4:'钻石镐',
+      dugThrough:'挖通了! ⛏️',
+      mineCave:'⛏️ 挖矿洞穴',
+      mineCaveMsg:'丰富矿脉, 没有怪物! 尽情挖吧~',
+      reachPortal:'到达传送门继续',
+      curPick:'当前镐子:',
       mobBlocks:'拦住了你！',
       miningPrefix:'挖掘',
       miningHand:'(徒手)',
@@ -388,9 +398,10 @@
       mineFail:'挖矿失败！正确答案是',
       gotItem:'+{n} {name} {emoji}',
       mobsLeft:'还有 {n} 只怪物没打败！',
-      needSword:'需要更好的剑/工具 (剑等级 {n}+)',
+      needSword:'需要更好的镐子 (镐子等级 {n}+)',
       winTitle:'🎉 通关啦！',
       winNormal:'你打败了所有怪物，找到了传送门！',
+      winMineCave:'⛏️ 走出洞穴！材料都收集好了。',
       winBoss:'🏆 你打败了 <b>{name}</b>！<br>获得 50 💎 + 200 ⭐ + 钻石×3 + 绿宝石×1',
       winScore:'本关得分：',
       btnNext:'下一关 →',
@@ -431,7 +442,7 @@
     },
     en: {
       gameTitle:'🟩 Block Math Adventure 🟫',
-      intro:'Explore a blocky world, beat mobs by solving math, collect diamonds!',
+      intro:'Explore the blocky world, beat mobs with math, collect gems! ⛏️ Chop trees, mine ores, craft better pickaxes! 💀 Boss every 5 levels · Mining Cave on 3/8/13…',
       chooseAge:'Choose Age',
       age5:'Age 5', age5desc:'Count · Compare · Add/Sub ≤10',
       age6:'Age 6', age6desc:'Add/Sub ≤20 · Shapes',
@@ -444,6 +455,13 @@
       hudAgeUnit:'yo',
       btnBag:'Bag/Craft', btnMenu:'Menu',
       swordEmpty:'Empty Hand', swordWood:'Wood Sword', swordStone:'Stone Sword', swordIron:'Iron Sword', swordDiamond:'Diamond Sword',
+      pickEmpty:'Hands', pickWood:'Wood Pickaxe', pickStone:'Stone Pickaxe', pickIron:'Iron Pickaxe', pickDiamond:'Diamond Pickaxe',
+      rPick1:'Wood Pickaxe', rPick2:'Stone Pickaxe', rPick3:'Iron Pickaxe', rPick4:'Diamond Pickaxe',
+      dugThrough:'Dug through! ⛏️',
+      mineCave:'⛏️ Mining Cave',
+      mineCaveMsg:'Rich ore veins, no monsters! Mine as much as you want.',
+      reachPortal:'Reach the portal to continue',
+      curPick:'Pickaxe:',
       mobBlocks:'blocks your path!',
       miningPrefix:'Mining',
       miningHand:'(by hand)',
@@ -456,9 +474,10 @@
       mineFail:'Mining failed! Answer was',
       gotItem:'+{n} {name} {emoji}',
       mobsLeft:'{n} mob(s) still alive!',
-      needSword:'Need better tool (sword level {n}+)',
+      needSword:'Need better pickaxe (pickaxe level {n}+)',
       winTitle:'🎉 Level Cleared!',
       winNormal:'You beat all mobs and reached the portal!',
+      winMineCave:'⛏️ You made it out of the cave with all your loot!',
       winBoss:'🏆 You defeated <b>{name}</b>!<br>Reward: 50 💎 + 200 ⭐ + Diamond×3 + Emerald×1',
       winScore:'Score this level:',
       btnNext:'Next Level →',
@@ -531,29 +550,38 @@
   };
   // 实心 = 玩家碰撞 + 站立 (不能穿过)
   const SOLID = new Set([T.GRASS, T.DIRT, T.STONE, T.COAL, T.IRON, T.GOLD,
-                         T.DIAMOND, T.EMERALD, T.BOSS_FLOOR, T.BEDROCK]);
-  // 可挖掘 = SOLID 子集, 挖空后变 AIR
+                         T.DIAMOND, T.EMERALD, T.BOSS_FLOOR, T.BEDROCK, T.TREE_TRUNK]);
+  // 可挖掘 = 挖空后变 AIR; need 指最低镐子等级 (0=徒手)
   const MINEABLE = {
+    [T.DIRT]:       { material:null,      color:'#7a4a2a', need:0 },
+    [T.GRASS]:      { material:null,      color:'#5a9a3a', need:0 },
     [T.TREE_TRUNK]: { material:'wood',    color:'#5a3a1a', need:0 },
     [T.TREE_LEAVES]:{ material:'wood',    color:'#3a8a2a', need:0 },
-    [T.STONE]:      { material:'stone',   color:'#aaa',    need:0 },
-    [T.COAL]:       { material:'coal',    color:'#222',    need:0 },
-    [T.IRON]:       { material:'iron',    color:'#d8a878', need:1 },
-    [T.GOLD]:       { material:'gold',    color:'#ffd54a', need:2 },
-    [T.DIAMOND]:    { material:'diamond', color:'#5fe0e0', need:2 },
-    [T.EMERALD]:    { material:'emerald', color:'#3aff7f', need:3 },
+    [T.STONE]:      { material:'stone',   color:'#aaa',    need:1 },
+    [T.COAL]:       { material:'coal',    color:'#222',    need:1 },
+    [T.IRON]:       { material:'iron',    color:'#d8a878', need:2 },
+    [T.GOLD]:       { material:'gold',    color:'#ffd54a', need:3 },
+    [T.DIAMOND]:    { material:'diamond', color:'#5fe0e0', need:3 },
+    [T.EMERALD]:    { material:'emerald', color:'#3aff7f', need:4 },
   };
   const MATERIAL_EMOJI = {
     wood:'🪵', stone:'🪨', coal:'⬛', iron:'🟫', gold:'🟨', diamond:'💎', emerald:'🟩'
   };
 
-  // 合成配方: 剑等级 1-4, 治疗药水 (name 由 i18n 提供)
+  // 合成配方: 4级剑(打怪) + 4级镐(挖矿) + 治疗药水
   const RECIPES = [
-    { id:'sword1', nameKey:'rSword1', icon:'🗡️', need:{wood:2},                       give:{type:'sword', level:1} },
-    { id:'sword2', nameKey:'rSword2', icon:'⚔️', need:{wood:1, stone:3},               give:{type:'sword', level:2} },
-    { id:'sword3', nameKey:'rSword3', icon:'🗡️', need:{wood:1, iron:2},                give:{type:'sword', level:3} },
-    { id:'sword4', nameKey:'rSword4', icon:'💠', need:{wood:1, iron:1, diamond:2},     give:{type:'sword', level:4} },
-    { id:'potion', nameKey:'rPotion', icon:'🧪', need:{gold:1, emerald:1},             give:{type:'potion', count:1} },
+    // 剑
+    { id:'sword1', nameKey:'rSword1', icon:'🗡️', need:{wood:2},                   give:{type:'sword', level:1} },
+    { id:'sword2', nameKey:'rSword2', icon:'⚔️', need:{wood:1, stone:3},           give:{type:'sword', level:2} },
+    { id:'sword3', nameKey:'rSword3', icon:'🗡️', need:{wood:1, iron:2},            give:{type:'sword', level:3} },
+    { id:'sword4', nameKey:'rSword4', icon:'💠', need:{wood:1, iron:1, diamond:2}, give:{type:'sword', level:4} },
+    // 镐子
+    { id:'pick1',  nameKey:'rPick1',  icon:'⛏️', need:{wood:3},                   give:{type:'pickaxe', level:1} },
+    { id:'pick2',  nameKey:'rPick2',  icon:'⛏️', need:{wood:2, stone:3},           give:{type:'pickaxe', level:2} },
+    { id:'pick3',  nameKey:'rPick3',  icon:'⛏️', need:{wood:2, iron:3},            give:{type:'pickaxe', level:3} },
+    { id:'pick4',  nameKey:'rPick4',  icon:'⛏️', need:{wood:2, iron:1, diamond:3}, give:{type:'pickaxe', level:4} },
+    // 药水
+    { id:'potion', nameKey:'rPotion', icon:'🧪', need:{gold:1, emerald:1},         give:{type:'potion', count:1} },
   ];
 
   // 剑等级效果 (label 由 i18n 动态获取)
@@ -563,6 +591,15 @@
     { gemBonus:2, retries:4, labelKey:'swordStone' },
     { gemBonus:3, retries:4, labelKey:'swordIron' },
     { gemBonus:5, retries:5, labelKey:'swordDiamond' },
+  ];
+
+  // 镐子等级 (决定能挖什么矿)
+  const PICKAXE_EFFECT = [
+    { labelKey:'pickEmpty' },
+    { labelKey:'pickWood' },
+    { labelKey:'pickStone' },
+    { labelKey:'pickIron' },
+    { labelKey:'pickDiamond' },
   ];
 
   // 怪物类型 (name 由 i18n 提供)
@@ -614,6 +651,7 @@
     audioCtx: null,
     inventory: { wood:0, stone:0, coal:0, iron:0, gold:0, diamond:0, emerald:0 },
     sword: 0,
+    pickaxe: 0,
     potions: 0,
   };
 
@@ -763,6 +801,72 @@
     return { map, heights };
   }
 
+  // 挖矿洞穴: 地面下大型洞穴, 充满矿石, 不打架
+  function genMineCaveMap(seed = Date.now()) {
+    const r = mulberry32(seed);
+    const map = [];
+    for (let y = 0; y < MAP_ROWS; y++) {
+      const row = [];
+      for (let x = 0; x < MAP_COLS; x++) row.push(T.STONE);
+      map.push(row);
+    }
+    // 顶部1行 + 边界 = 基岩 (防止飞出)
+    for (let x = 0; x < MAP_COLS; x++) {
+      map[0][x] = T.BEDROCK;
+      map[MAP_ROWS-1][x] = T.BEDROCK;
+    }
+    for (let y = 0; y < MAP_ROWS; y++) {
+      map[y][0] = T.BEDROCK;
+      map[y][MAP_COLS-1] = T.BEDROCK;
+    }
+    // 主通道: 一条蜿蜒地表 (高度变化的"地板"), 上方挖空
+    const floorY = [];
+    let fy = 8;
+    for (let x = 1; x < MAP_COLS-1; x++) {
+      // 蜿蜒
+      if (r() < 0.25) fy += (r() < 0.5 ? -1 : 1);
+      fy = clamp(fy, 5, 10);
+      floorY.push(fy);
+      // 地板及以下保留为 STONE; 地板上方挖空 (AIR) 让玩家行走
+      for (let y = fy - 4; y < fy; y++) {
+        if (y > 0) map[y][x] = T.AIR;
+      }
+    }
+    // 顶层灯笼/装饰: 散布几个 TREE_LEAVES (作为洞穴蘑菇)
+    for (let i = 0; i < 6; i++) {
+      const x = 2 + Math.floor(r()*(MAP_COLS-4));
+      const fyI = floorY[x-1];
+      if (fyI > 2) map[fyI - 1][x] = T.FLOWER; // 用花当地下蘑菇/灯
+    }
+    // 丰富矿脉: 大量 ores 嵌入 STONE
+    const oreSpec = [
+      { type: T.COAL,    count: 25 },
+      { type: T.IRON,    count: 18 },
+      { type: T.GOLD,    count: 10 },
+      { type: T.DIAMOND, count: 8 },
+      { type: T.EMERALD, count: 4 },
+    ];
+    for (const spec of oreSpec) {
+      for (let i = 0; i < spec.count; i++) {
+        for (let tries=0; tries<40; tries++) {
+          const x = 1 + Math.floor(r()*(MAP_COLS-2));
+          const y = 2 + Math.floor(r()*(MAP_ROWS-3));
+          if (map[y][x] === T.STONE) { map[y][x] = spec.type; break; }
+        }
+      }
+    }
+    // 传送门: 最右端的"地板上方"
+    const lastFy = floorY[floorY.length-1] || 8;
+    map[lastFy - 1][MAP_COLS - 2] = T.PORTAL;
+    // 起始处也确保有空间站
+    const startFy = floorY[0] || 8;
+    map[startFy - 1][1] = T.AIR;
+    map[startFy - 2][1] = T.AIR;
+    // heights 数组: 用 floorY 包装 (玩家 spawn 用)
+    const heights = [floorY[0] || 8, ...floorY, floorY[floorY.length-1] || 8];
+    return { map, heights };
+  }
+
   // Boss 关: 长平台 + 中央两个石柱
   function genBossMap() {
     const map = [];
@@ -806,12 +910,26 @@
     state.inBattle = false;
     state.inMining = false;
     state.inBoss = false;
+    state.inMineCave = false;
     state.boss = null;
     state.keys.left = state.keys.right = state.keys.jump = state.keys.jumpHeld = false;
 
     if (state.level % 5 === 0) buildBossLevel();
+    else if ((state.level + 2) % 5 === 0) buildMineCaveLevel();
     else buildNormalLevel();
     updateHud();
+  }
+
+  function buildMineCaveLevel() {
+    const { map, heights } = genMineCaveMap(Date.now() + state.level);
+    state.map = map;
+    state.mapHeights = heights;
+    state.mobs = [];
+    state.inMineCave = true;
+    spawnPlayerOn(heights, 1);
+    state.portal = { x: (MAP_COLS-2) * TILE, y: 0 };
+    if (state.pickaxe < 1) state.pickaxe = 1;
+    flashMessage(t('mineCaveMsg'));
   }
 
   function spawnPlayerOn(heights, tx) {
@@ -885,15 +1003,21 @@
 
   // ====== HUD ======
   function updateHud() {
-    document.getElementById('hudLevel').textContent = state.level + (state.inBoss ? ' ' + t('hudBoss') : '');
+    let lvlSuffix = '';
+    if (state.inBoss) lvlSuffix = ' ' + t('hudBoss');
+    else if (state.inMineCave) lvlSuffix = ' ⛏️';
+    document.getElementById('hudLevel').textContent = state.level + lvlSuffix;
     document.getElementById('hudAge').textContent = state.age + t('hudAgeUnit');
     document.getElementById('hudGems').textContent = state.gems;
     document.getElementById('hudScore').textContent = state.score;
     const h = document.getElementById('hudHearts');
     h.textContent = '❤'.repeat(Math.max(0,state.hp)) + '🖤'.repeat(Math.max(0,3-state.hp));
-    const icons = ['🤚','🪵','⚔️','🗡️','💠'];
+    const swordIcons = ['🤚','🪵','⚔️','🗡️','💠'];
+    const pickIcons  = ['🤚','🪵','⛏️','⛏','⛏️'];
     document.getElementById('hudSword').textContent =
-      icons[state.sword] + ' ' + t(SWORD_EFFECT[state.sword].labelKey);
+      swordIcons[state.sword] + ' ' + t(SWORD_EFFECT[state.sword].labelKey);
+    document.getElementById('hudPick').textContent =
+      pickIcons[state.pickaxe] + ' ' + t(PICKAXE_EFFECT[state.pickaxe].labelKey);
     document.getElementById('hudPotion').textContent = '🧪 ' + state.potions;
   }
 
@@ -908,6 +1032,7 @@
       bag.appendChild(cell);
     });
     document.getElementById('curSword').textContent = t(SWORD_EFFECT[state.sword].labelKey);
+    document.getElementById('curPick').textContent = t(PICKAXE_EFFECT[state.pickaxe].labelKey);
     document.getElementById('curPot').textContent = state.potions;
 
     const list = document.getElementById('recipeList');
@@ -915,7 +1040,8 @@
     RECIPES.forEach(r => {
       const row = document.createElement('div');
       row.className = 'recipe-row';
-      const have = (r.give.type === 'sword' && state.sword >= r.give.level);
+      const have = (r.give.type === 'sword' && state.sword >= r.give.level) ||
+                   (r.give.type === 'pickaxe' && state.pickaxe >= r.give.level);
       if (have) row.classList.add('have');
       const needText = Object.entries(r.need).map(([k,v]) =>
         MATERIAL_EMOJI[k] + v + '(' + t('have') + ' ' + (state.inventory[k]||0) + ')'
@@ -939,12 +1065,14 @@
     Object.entries(r.need).forEach(([k,v]) => state.inventory[k] -= v);
     if (r.give.type === 'sword') {
       state.sword = Math.max(state.sword, r.give.level);
+    } else if (r.give.type === 'pickaxe') {
+      state.pickaxe = Math.max(state.pickaxe, r.give.level);
     } else if (r.give.type === 'potion') {
       state.potions += r.give.count;
     }
     sndCorrect();
     updateHud();
-    openCraftPanel(); // 刷新
+    openCraftPanel();
   }
 
   // ====== 渲染 (侧视) ======
@@ -952,16 +1080,31 @@
                                   T.DIAMOND, T.EMERALD, T.BOSS_FLOOR, T.BEDROCK]);
 
   function draw() {
-    // 天空渐变 (按时段固定)
-    const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, '#7ec0ff');
-    sky.addColorStop(0.6, '#bfe3ff');
-    sky.addColorStop(1, '#e6f4ff');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, H);
-
-    // 远景小山 (视差: 镜头移动一半速度)
-    drawBackgroundHills();
+    if (state.inMineCave) {
+      // 洞穴: 深紫黑背景, 加微妙颗粒
+      const dk = ctx.createLinearGradient(0, 0, 0, H);
+      dk.addColorStop(0, '#1a1020');
+      dk.addColorStop(1, '#0a0510');
+      ctx.fillStyle = dk;
+      ctx.fillRect(0, 0, W, H);
+      // 火把闪烁光晕
+      const glow = (Math.sin(Date.now()/400)+1)/2;
+      ctx.fillStyle = 'rgba(255,150,60,' + (0.04 + glow*0.04) + ')';
+      ctx.fillRect(0, 0, W, H);
+    } else if (state.inBoss) {
+      // Boss 场景: 暗末地
+      ctx.fillStyle = '#1a0a2a';
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      // 天空渐变
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#7ec0ff');
+      sky.addColorStop(0.6, '#bfe3ff');
+      sky.addColorStop(1, '#e6f4ff');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+      drawBackgroundHills();
+    }
 
     const cx = Math.floor(state.camX);
     const startTx = Math.max(0, Math.floor(cx / TILE));
@@ -1158,10 +1301,19 @@
         ctx.fillStyle = '#8a8a8a'; ctx.fillRect(x, y, TILE, TILE);
         ctx.fillStyle = '#6a6a6a';
         ctx.fillRect(x+3, y+3, TILE-6, TILE-6);
+        // 钻石/绿宝石: 发光脉动 (帮助孩子发现稀有矿)
+        const isRare = (type === T.DIAMOND || type === T.EMERALD);
+        const glow = isRare ? (Math.sin(Date.now()/300 + tx + ty)+1)/2 : 0;
+        if (isRare) {
+          ctx.fillStyle = MINEABLE[type].color;
+          ctx.globalAlpha = 0.15 + glow*0.25;
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.globalAlpha = 1;
+        }
         ctx.fillStyle = MINEABLE[type].color;
         [[5,6],[20,8],[8,20],[22,22],[14,14]].forEach(([dx,dy]) => ctx.fillRect(x+dx, y+dy, 4, 4));
         ctx.fillStyle = '#fff';
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = isRare ? (0.5 + glow*0.4) : 0.5;
         ctx.fillRect(x+6, y+7, 2, 2);
         ctx.fillRect(x+21, y+9, 2, 2);
         ctx.globalAlpha = 1;
@@ -1420,7 +1572,7 @@
         const tileType = state.map[hit.ty][hit.tx];
         if (MINEABLE[tileType]) {
           const ore = MINEABLE[tileType];
-          if (state.sword < ore.need) {
+          if (state.pickaxe < ore.need) {
             flashMessage(t('needSword', { n: ore.need }));
             // 卡墙
             p.x = (p.vx > 0) ? hit.tx*TILE - p.w : (hit.tx+1)*TILE;
@@ -1573,7 +1725,7 @@
       const type = state.map[ty]?.[tx];
       if (MINEABLE[type]) {
         const ore = MINEABLE[type];
-        if (state.sword < ore.need) {
+        if (state.pickaxe < ore.need) {
           flashMessage(t('needSword', { n: ore.need }));
           return;
         }
@@ -1587,7 +1739,7 @@
     const downType = state.map[downTy]?.[downTx];
     if (MINEABLE[downType]) {
       const ore = MINEABLE[downType];
-      if (state.sword >= ore.need) startMining(downTx, downTy, downType);
+      if (state.pickaxe >= ore.need) startMining(downTx, downTy, downType);
       else flashMessage(t('needSword', { n: ore.need }));
     }
   }
@@ -1862,19 +2014,20 @@
       fb.textContent = praises[Math.floor(Math.random()*praises.length)];
       sndCorrect();
       if (state.inMining) {
-        // 挖矿成功: 得材料, 把方块清空
+        // 挖矿成功: 把方块清空, 给材料 (DIRT/GRASS 无材料, 仅得分)
         const mt = state.activeMineTile;
         const mat = MINEABLE[mt.type].material;
-        const amount = 1 + (mt.type === T.COAL || mt.type === T.IRON ? Math.floor(Math.random()*2) : 0);
-        state.inventory[mat] = (state.inventory[mat] || 0) + amount;
+        const amount = mat ? (1 + (mt.type === T.COAL || mt.type === T.IRON ? Math.floor(Math.random()*2) : 0)) : 0;
+        if (mat) state.inventory[mat] = (state.inventory[mat] || 0) + amount;
         state.map[mt.y][mt.x] = T.AIR;
-        state.score += 5;
+        state.score += mat ? 5 : 2;
         updateHud();
         setTimeout(() => {
           closeBattleOverlay();
           state.inMining = false;
           state.activeMineTile = null;
-          flashMessage(t('gotItem', { n:amount, name:matName(mat), emoji:MATERIAL_EMOJI[mat] }));
+          if (mat) flashMessage(t('gotItem', { n:amount, name:matName(mat), emoji:MATERIAL_EMOJI[mat] }));
+          else flashMessage(t('dugThrough'));
           sndGem();
         }, 900);
       } else if (state.inBoss && state.boss) {
@@ -1969,6 +2122,8 @@
     const winText = document.getElementById('winText');
     if (state.inBoss && state.boss) {
       winText.innerHTML = t('winBoss', { name: bossName(state.boss.type) });
+    } else if (state.inMineCave) {
+      winText.textContent = t('winMineCave');
     } else {
       winText.textContent = t('winNormal');
     }
@@ -2061,6 +2216,7 @@
     state.gems = 0;
     state.hp = 3;
     state.sword = 0;
+    state.pickaxe = 0;
     state.potions = 0;
     state.inventory = { wood:0, stone:0, coal:0, iron:0, gold:0, diamond:0, emerald:0 };
   }
