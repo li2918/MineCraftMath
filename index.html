@@ -187,7 +187,7 @@
 <div id="game">
   <div id="hud">
     <div class="group">
-      <span class="badge level">第 <span id="hudLevel">1</span> 关</span>
+      <span class="badge level"><span data-i18n="hudLevel">第</span> <span id="hudLevel">1</span> <span data-i18n="hudLevelAfter">关</span></span>
       <span class="badge">🧒 <span id="hudAge">5岁</span></span>
     </div>
     <div class="group">
@@ -198,8 +198,9 @@
     <div class="group">
       <span class="badge" id="hudSword">🗡️空手</span>
       <span class="badge" id="hudPotion">🧪 0</span>
-      <button class="tiny" id="btnCraft">背包/合成</button>
-      <button class="tiny" id="btnMenu">菜单</button>
+      <button class="tiny" id="btnCraft" data-i18n="btnBag">背包/合成</button>
+      <button class="tiny" id="btnMenu" data-i18n="btnMenu">菜单</button>
+      <button class="tiny" id="btnLang">EN</button>
     </div>
   </div>
 
@@ -224,24 +225,21 @@
 <!-- Start menu -->
 <div id="menuOverlay" class="overlay">
   <div class="panel">
-    <h1>🟩 方块数学冒险 🟫</h1>
-    <p>在方块世界里探险，遇到怪物答数学题，闯关收集钻石！</p>
+    <h1 data-i18n="gameTitle">🟩 方块数学冒险 🟫</h1>
+    <p data-i18n="intro">在方块世界里探险，遇到怪物答数学题，闯关收集钻石！</p>
 
-    <h2>选择年龄</h2>
+    <h2 data-i18n="chooseAge">选择年龄</h2>
     <div class="age-grid" id="ageGrid">
-      <div class="age-card" data-age="5"><span class="big">5 岁</span><span class="small">数数·比大小·10以内加减</span></div>
-      <div class="age-card" data-age="6"><span class="big">6 岁</span><span class="small">20以内加减·形状</span></div>
-      <div class="age-card" data-age="7"><span class="big">7 岁</span><span class="small">100以内加减·入门乘法</span></div>
-      <div class="age-card" data-age="8"><span class="big">8 岁</span><span class="small">乘法口诀·入门除法</span></div>
+      <div class="age-card" data-age="5"><span class="big" data-i18n="age5">5 岁</span><span class="small" data-i18n="age5desc">数数·比大小·10以内加减</span></div>
+      <div class="age-card" data-age="6"><span class="big" data-i18n="age6">6 岁</span><span class="small" data-i18n="age6desc">20以内加减·形状</span></div>
+      <div class="age-card" data-age="7"><span class="big" data-i18n="age7">7 岁</span><span class="small" data-i18n="age7desc">100以内加减·入门乘法</span></div>
+      <div class="age-card" data-age="8"><span class="big" data-i18n="age8">8 岁</span><span class="small" data-i18n="age8desc">乘法口诀·入门除法</span></div>
     </div>
 
-    <p style="font-size:12px;color:#555">
-      🎮 <b>电脑</b>：方向键或 WASD 移动 &nbsp; | &nbsp;
-      📱 <b>手机/平板</b>：屏幕左下虚拟方向键
-    </p>
+    <p style="font-size:12px;color:#555" data-i18n="hintControls">🎮 电脑：方向键或 WASD 移动  |  📱 手机/平板：屏幕左下虚拟方向键</p>
 
     <div class="row">
-      <button class="mcbtn primary" id="btnStart">开始冒险</button>
+      <button class="mcbtn primary" id="btnStart" data-i18n="btnStart">开始冒险</button>
     </div>
   </div>
 </div>
@@ -251,7 +249,7 @@
   <div class="panel">
     <div class="mob-banner">
       <canvas id="battleMobCanvas" width="48" height="48" style="image-rendering:pixelated"></canvas>
-      <div><span class="mob-name" id="mobName">僵尸</span> 拦住了你！</div>
+      <div><span class="mob-name" id="mobName"></span></div>
     </div>
     <div class="visual empty" id="qVisual"></div>
     <div class="question" id="qText">1 + 1 = ?</div>
@@ -263,12 +261,12 @@
 <!-- Level complete modal -->
 <div id="winOverlay" class="overlay" style="display:none">
   <div class="panel">
-    <h1>🎉 通关啦！</h1>
-    <p id="winText">你打败了所有怪物，找到了传送门！</p>
-    <p>本关得分：<b id="winScore">0</b></p>
+    <h1 data-i18n="winTitle">🎉 通关啦！</h1>
+    <p id="winText"></p>
+    <p><span data-i18n="winScore">本关得分：</span><b id="winScore">0</b></p>
     <div class="row">
-      <button class="mcbtn primary" id="btnNext">下一关 →</button>
-      <button class="mcbtn" id="btnReplay">再玩本关</button>
+      <button class="mcbtn primary" id="btnNext" data-i18n="btnNext">下一关 →</button>
+      <button class="mcbtn" id="btnReplay" data-i18n="btnReplay">再玩本关</button>
     </div>
   </div>
 </div>
@@ -276,12 +274,12 @@
 <!-- Game over modal -->
 <div id="loseOverlay" class="overlay" style="display:none">
   <div class="panel">
-    <h1>💀 游戏结束</h1>
-    <p>没关系，多练习就会越来越棒！</p>
-    <p>累计得分：<b id="loseScore">0</b></p>
+    <h1 data-i18n="loseTitle">💀 游戏结束</h1>
+    <p data-i18n="loseMsg">没关系，多练习就会越来越棒！</p>
+    <p><span data-i18n="loseScore">累计得分：</span><b id="loseScore">0</b></p>
     <div class="row">
-      <button class="mcbtn primary" id="btnRetry">重新开始</button>
-      <button class="mcbtn" id="btnBackMenu">返回菜单</button>
+      <button class="mcbtn primary" id="btnRetry" data-i18n="btnRetry">重新开始</button>
+      <button class="mcbtn" id="btnBackMenu" data-i18n="btnBackMenu">返回菜单</button>
     </div>
   </div>
 </div>
@@ -289,22 +287,167 @@
 <!-- 背包/合成 -->
 <div id="craftOverlay" class="overlay" style="display:none">
   <div class="panel" style="max-width:560px">
-    <h1>🎒 背包 / 🛠️ 合成</h1>
+    <h1 data-i18n="craftTitle">🎒 背包 / 🛠️ 合成</h1>
     <div id="bagList" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0"></div>
-    <p style="font-size:13px;color:#444">当前装备: <b id="curSword">空手</b> &nbsp;|&nbsp; 治疗药水: <b id="curPot">0</b></p>
-    <h2 style="margin-top:14px">合成配方</h2>
+    <p style="font-size:13px;color:#444">
+      <span data-i18n="curEquip">当前装备:</span> <b id="curSword">空手</b>
+      &nbsp;|&nbsp;
+      <span data-i18n="curPot">治疗药水:</span> <b id="curPot">0</b>
+    </p>
+    <h2 style="margin-top:14px" data-i18n="craftSection">合成配方</h2>
     <div id="recipeList" style="display:flex;flex-direction:column;gap:6px"></div>
     <div class="row">
-      <button class="mcbtn primary" id="btnCloseCraft">关闭</button>
+      <button class="mcbtn primary" id="btnCloseCraft" data-i18n="btnClose">关闭</button>
     </div>
   </div>
 </div>
 
-<div class="credit">made for my son · v1</div>
+<div class="credit" data-i18n="credit">made for my son · v1</div>
 
 <script>
 (() => {
   'use strict';
+
+  // ====== i18n ======
+  const I18N = {
+    zh: {
+      gameTitle:'🟩 方块数学冒险 🟫',
+      intro:'在方块世界里探险，遇到怪物答数学题，闯关收集钻石！',
+      chooseAge:'选择年龄',
+      age5:'5 岁', age5desc:'数数·比大小·10以内加减',
+      age6:'6 岁', age6desc:'20以内加减·形状',
+      age7:'7 岁', age7desc:'100以内加减·入门乘法',
+      age8:'8 岁', age8desc:'乘法口诀·入门除法',
+      hintControls:'🎮 电脑：方向键或 WASD 移动  |  📱 手机/平板：屏幕左下虚拟方向键',
+      btnStart:'开始冒险',
+      hudLevel:'第',  hudLevelAfter:'关',
+      hudBoss:'BOSS',
+      hudAgeUnit:'岁',
+      btnBag:'背包/合成', btnMenu:'菜单',
+      swordEmpty:'空手', swordWood:'木剑', swordStone:'石剑', swordIron:'铁剑', swordDiamond:'钻剑',
+      mobBlocks:'拦住了你！',
+      miningPrefix:'挖掘',
+      miningHand:'(徒手)',
+      bossHp:'HP',
+      praises:['太棒了！🎉','答对了！⭐','真厉害！💎','完美！🏆','聪明的玩家！✨'],
+      tryAgain:'再想想看！💪',
+      correctIs:'正确答案是',
+      hpMinus:'。 ❤ -1',
+      usedPotion:'。 自动使用治疗药水 🧪 +1❤',
+      mineFail:'挖矿失败！正确答案是',
+      gotItem:'+{n} {name} {emoji}',
+      mobsLeft:'还有 {n} 只怪物没打败！',
+      needSword:'需要更好的剑/工具 (剑等级 {n}+)',
+      winTitle:'🎉 通关啦！',
+      winNormal:'你打败了所有怪物，找到了传送门！',
+      winBoss:'🏆 你打败了 <b>{name}</b>！<br>获得 50 💎 + 200 ⭐ + 钻石×3 + 绿宝石×1',
+      winScore:'本关得分：',
+      btnNext:'下一关 →',
+      btnReplay:'再玩本关',
+      loseTitle:'💀 游戏结束',
+      loseMsg:'没关系，多练习就会越来越棒！',
+      loseScore:'累计得分：',
+      btnRetry:'重新开始',
+      btnBackMenu:'返回菜单',
+      craftTitle:'🎒 背包 / 🛠️ 合成',
+      curEquip:'当前装备:',
+      curPot:'治疗药水:',
+      craftSection:'合成配方',
+      btnClose:'关闭',
+      btnCraft:'合成',
+      noMaterial:'材料不足',
+      alreadyOwn:'已拥有',
+      have:'有',
+      // 怪物
+      mZombie:'僵尸', mSkeleton:'骷髅', mCreeper:'苦力怕',
+      mSpider:'蜘蛛', mSlime:'史莱姆', mEnderman:'末影人',
+      // Boss
+      bWither:'凋灵', bEnderdragon:'末影龙', bGuardian:'远古守卫者',
+      // 材料
+      matWood:'木头', matStone:'石头', matCoal:'煤', matIron:'铁',
+      matGold:'金', matDiamond:'钻石', matEmerald:'绿宝石',
+      // 配方名
+      rSword1:'木剑', rSword2:'石剑', rSword3:'铁剑', rSword4:'钻石剑', rPotion:'治疗药水',
+      // 题目
+      qCountHow:'数一数有几个?',
+      qWhichBigger:'{a} 和 {b} 哪个大?',
+      qTotalHow:'一共有几个?',
+      qShapeSides:'{shape} 有几条边?',
+      qChooseSymbol:'请选择正确的符号',
+      shapeTri:'三角形', shapeSq:'正方形', shapePent:'五边形', shapeHex:'六边形',
+      langLabel:'EN',
+      credit:'made for my son · v1',
+    },
+    en: {
+      gameTitle:'🟩 Block Math Adventure 🟫',
+      intro:'Explore a blocky world, beat mobs by solving math, collect diamonds!',
+      chooseAge:'Choose Age',
+      age5:'Age 5', age5desc:'Count · Compare · Add/Sub ≤10',
+      age6:'Age 6', age6desc:'Add/Sub ≤20 · Shapes',
+      age7:'Age 7', age7desc:'Add/Sub ≤100 · Basic Multiply',
+      age8:'Age 8', age8desc:'Times Table · Basic Divide',
+      hintControls:'🎮 PC: Arrow keys or WASD  |  📱 Mobile: on-screen D-pad',
+      btnStart:'Start Adventure',
+      hudLevel:'Level', hudLevelAfter:'',
+      hudBoss:'BOSS',
+      hudAgeUnit:'yo',
+      btnBag:'Bag/Craft', btnMenu:'Menu',
+      swordEmpty:'Empty Hand', swordWood:'Wood Sword', swordStone:'Stone Sword', swordIron:'Iron Sword', swordDiamond:'Diamond Sword',
+      mobBlocks:'blocks your path!',
+      miningPrefix:'Mining',
+      miningHand:'(by hand)',
+      bossHp:'HP',
+      praises:['Awesome! 🎉','Correct! ⭐','Brilliant! 💎','Perfect! 🏆','Smart move! ✨'],
+      tryAgain:'Try again! 💪',
+      correctIs:'Correct answer is',
+      hpMinus:'. ❤ -1',
+      usedPotion:'. Used healing potion 🧪 +1❤',
+      mineFail:'Mining failed! Answer was',
+      gotItem:'+{n} {name} {emoji}',
+      mobsLeft:'{n} mob(s) still alive!',
+      needSword:'Need better tool (sword level {n}+)',
+      winTitle:'🎉 Level Cleared!',
+      winNormal:'You beat all mobs and reached the portal!',
+      winBoss:'🏆 You defeated <b>{name}</b>!<br>Reward: 50 💎 + 200 ⭐ + Diamond×3 + Emerald×1',
+      winScore:'Score this level:',
+      btnNext:'Next Level →',
+      btnReplay:'Replay',
+      loseTitle:'💀 Game Over',
+      loseMsg:'No worries, practice makes perfect!',
+      loseScore:'Total score:',
+      btnRetry:'Restart',
+      btnBackMenu:'Back to Menu',
+      craftTitle:'🎒 Bag / 🛠️ Crafting',
+      curEquip:'Equipped:',
+      curPot:'Potions:',
+      craftSection:'Recipes',
+      btnClose:'Close',
+      btnCraft:'Craft',
+      noMaterial:'Not enough',
+      alreadyOwn:'Owned',
+      have:'have',
+      mZombie:'Zombie', mSkeleton:'Skeleton', mCreeper:'Creeper',
+      mSpider:'Spider', mSlime:'Slime', mEnderman:'Enderman',
+      bWither:'Wither', bEnderdragon:'Ender Dragon', bGuardian:'Elder Guardian',
+      matWood:'Wood', matStone:'Stone', matCoal:'Coal', matIron:'Iron',
+      matGold:'Gold', matDiamond:'Diamond', matEmerald:'Emerald',
+      rSword1:'Wood Sword', rSword2:'Stone Sword', rSword3:'Iron Sword', rSword4:'Diamond Sword', rPotion:'Healing Potion',
+      qCountHow:'How many are there?',
+      qWhichBigger:'Which is bigger, {a} or {b}?',
+      qTotalHow:'How many in total?',
+      qShapeSides:'How many sides does a {shape} have?',
+      qChooseSymbol:'Choose the correct symbol',
+      shapeTri:'triangle', shapeSq:'square', shapePent:'pentagon', shapeHex:'hexagon',
+      langLabel:'中',
+      credit:'made for my son · v1',
+    }
+  };
+  function t(key, vars) {
+    let s = (I18N[state?.lang || 'zh'] || I18N.zh)[key];
+    if (s == null) return key;
+    if (vars) for (const k in vars) s = s.replaceAll('{'+k+'}', vars[k]);
+    return s;
+  }
 
   // ====== 配置 ======
   const TILE = 40;
@@ -330,44 +473,49 @@
     [T.DIAMOND]: { material:'diamond', name:'钻石矿', color:'#5fe0e0', need:2 },
     [T.EMERALD]: { material:'emerald', name:'绿宝石', color:'#3aff7f', need:3 },
   };
-  // 材料中文名
-  const MATERIAL_NAMES = {
-    wood:'木头', stone:'石头', coal:'煤', iron:'铁', gold:'金', diamond:'钻石', emerald:'绿宝石'
-  };
   const MATERIAL_EMOJI = {
     wood:'🪵', stone:'🪨', coal:'⬛', iron:'🟫', gold:'🟨', diamond:'💎', emerald:'🟩'
   };
 
-  // 合成配方: 剑等级 1-4, 治疗药水
+  // 合成配方: 剑等级 1-4, 治疗药水 (name 由 i18n 提供)
   const RECIPES = [
-    { id:'sword1', name:'木剑',    icon:'🗡️', need:{wood:2},                       give:{type:'sword', level:1} },
-    { id:'sword2', name:'石剑',    icon:'⚔️', need:{wood:1, stone:3},               give:{type:'sword', level:2} },
-    { id:'sword3', name:'铁剑',    icon:'🗡️', need:{wood:1, iron:2},                give:{type:'sword', level:3} },
-    { id:'sword4', name:'钻石剑',  icon:'💠', need:{wood:1, iron:1, diamond:2},     give:{type:'sword', level:4} },
-    { id:'potion', name:'治疗药水', icon:'🧪', need:{gold:1, emerald:1},             give:{type:'potion', count:1} },
+    { id:'sword1', nameKey:'rSword1', icon:'🗡️', need:{wood:2},                       give:{type:'sword', level:1} },
+    { id:'sword2', nameKey:'rSword2', icon:'⚔️', need:{wood:1, stone:3},               give:{type:'sword', level:2} },
+    { id:'sword3', nameKey:'rSword3', icon:'🗡️', need:{wood:1, iron:2},                give:{type:'sword', level:3} },
+    { id:'sword4', nameKey:'rSword4', icon:'💠', need:{wood:1, iron:1, diamond:2},     give:{type:'sword', level:4} },
+    { id:'potion', nameKey:'rPotion', icon:'🧪', need:{gold:1, emerald:1},             give:{type:'potion', count:1} },
   ];
 
-  // 剑等级效果
+  // 剑等级效果 (label 由 i18n 动态获取)
   const SWORD_EFFECT = [
-    { dmgBonus:0, gemBonus:0, retries:3, label:'空手' },
-    { dmgBonus:0, gemBonus:1, retries:3, label:'木剑'   },
-    { dmgBonus:0, gemBonus:2, retries:4, label:'石剑'   },
-    { dmgBonus:0, gemBonus:3, retries:4, label:'铁剑'   },
-    { dmgBonus:0, gemBonus:5, retries:5, label:'钻石剑' },
+    { gemBonus:0, retries:3, labelKey:'swordEmpty' },
+    { gemBonus:1, retries:3, labelKey:'swordWood' },
+    { gemBonus:2, retries:4, labelKey:'swordStone' },
+    { gemBonus:3, retries:4, labelKey:'swordIron' },
+    { gemBonus:5, retries:5, labelKey:'swordDiamond' },
   ];
 
-  // 怪物类型
+  // 怪物类型 (name 由 i18n 提供)
   const MOBS = {
-    zombie:   { name:'僵尸',   color:'#3a7d3a', skin:'#5fbf5f', shirt:'#3a4a2a' },
-    skeleton: { name:'骷髅',   color:'#dddddd', skin:'#f5f5f5', shirt:'#999' },
-    creeper:  { name:'苦力怕', color:'#6cbf3f', skin:'#6cbf3f', shirt:'#3d8a26' },
-    spider:   { name:'蜘蛛',   color:'#5a3a3a', skin:'#3a1a1a', shirt:'#1a0a0a' },
-    slime:    { name:'史莱姆', color:'#7fce5f', skin:'#a8e683', shirt:'#5a9a3a' },
-    enderman: { name:'末影人', color:'#1a0a1a', skin:'#1a0a1a', shirt:'#1a0a1a' },
+    zombie:   { color:'#3a7d3a', skin:'#5fbf5f', shirt:'#3a4a2a' },
+    skeleton: { color:'#dddddd', skin:'#f5f5f5', shirt:'#999' },
+    creeper:  { color:'#6cbf3f', skin:'#6cbf3f', shirt:'#3d8a26' },
+    spider:   { color:'#5a3a3a', skin:'#3a1a1a', shirt:'#1a0a0a' },
+    slime:    { color:'#7fce5f', skin:'#a8e683', shirt:'#5a9a3a' },
+    enderman: { color:'#1a0a1a', skin:'#1a0a1a', shirt:'#1a0a1a' },
   };
+  const mobKey = { zombie:'mZombie', skeleton:'mSkeleton', creeper:'mCreeper',
+                   spider:'mSpider', slime:'mSlime', enderman:'mEnderman' };
+  const bossKey = { wither:'bWither', enderdragon:'bEnderdragon', guardian:'bGuardian' };
+  const matKey = { wood:'matWood', stone:'matStone', coal:'matCoal', iron:'matIron',
+                   gold:'matGold', diamond:'matDiamond', emerald:'matEmerald' };
+  function mobName(type) { return t(mobKey[type]); }
+  function bossName(type) { return t(bossKey[type]); }
+  function matName(m) { return t(matKey[m]); }
 
   // ====== 状态 ======
   const state = {
+    lang: 'zh',
     age: 5,
     level: 1,
     score: 0,
@@ -634,22 +782,18 @@
     state.portal = { x:-1, y:-1 }; // 无传送门
   }
 
-  const BOSS_NAMES = {
-    wither: '凋灵',
-    enderdragon: '末影龙',
-    guardian: '远古守卫者',
-  };
 
   // ====== HUD ======
   function updateHud() {
-    document.getElementById('hudLevel').textContent = state.level + (state.inBoss ? ' BOSS' : '');
-    document.getElementById('hudAge').textContent = state.age + '岁';
+    document.getElementById('hudLevel').textContent = state.level + (state.inBoss ? ' ' + t('hudBoss') : '');
+    document.getElementById('hudAge').textContent = state.age + t('hudAgeUnit');
     document.getElementById('hudGems').textContent = state.gems;
     document.getElementById('hudScore').textContent = state.score;
     const h = document.getElementById('hudHearts');
     h.textContent = '❤'.repeat(Math.max(0,state.hp)) + '🖤'.repeat(Math.max(0,3-state.hp));
+    const icons = ['🤚','🪵','⚔️','🗡️','💠'];
     document.getElementById('hudSword').textContent =
-      (['🤚空手','🪵木剑','⚔️石剑','🗡️铁剑','💠钻剑'])[state.sword];
+      icons[state.sword] + ' ' + t(SWORD_EFFECT[state.sword].labelKey);
     document.getElementById('hudPotion').textContent = '🧪 ' + state.potions;
   }
 
@@ -657,13 +801,13 @@
   function openCraftPanel() {
     const bag = document.getElementById('bagList');
     bag.innerHTML = '';
-    Object.keys(MATERIAL_NAMES).forEach(m => {
+    Object.keys(matKey).forEach(m => {
       const cell = document.createElement('div');
       cell.className = 'bag-cell';
-      cell.textContent = MATERIAL_EMOJI[m] + ' ' + MATERIAL_NAMES[m] + ': ' + (state.inventory[m]||0);
+      cell.textContent = MATERIAL_EMOJI[m] + ' ' + matName(m) + ': ' + (state.inventory[m]||0);
       bag.appendChild(cell);
     });
-    document.getElementById('curSword').textContent = SWORD_EFFECT[state.sword].label;
+    document.getElementById('curSword').textContent = t(SWORD_EFFECT[state.sword].labelKey);
     document.getElementById('curPot').textContent = state.potions;
 
     const list = document.getElementById('recipeList');
@@ -674,17 +818,17 @@
       const have = (r.give.type === 'sword' && state.sword >= r.give.level);
       if (have) row.classList.add('have');
       const needText = Object.entries(r.need).map(([k,v]) =>
-        MATERIAL_EMOJI[k] + v + '(有' + (state.inventory[k]||0) + ')'
+        MATERIAL_EMOJI[k] + v + '(' + t('have') + ' ' + (state.inventory[k]||0) + ')'
       ).join(' + ');
       row.innerHTML = `
-        <div class="rname">${r.icon} ${r.name}</div>
+        <div class="rname">${r.icon} ${t(r.nameKey)}</div>
         <div class="rneed">${needText}</div>
       `;
       const btn = document.createElement('button');
       const canCraft = Object.entries(r.need).every(([k,v]) => (state.inventory[k]||0) >= v);
-      if (have) { btn.textContent = '已拥有'; btn.disabled = true; }
-      else if (!canCraft) { btn.textContent = '材料不足'; btn.disabled = true; }
-      else { btn.textContent = '合成'; btn.onclick = () => doCraft(r); }
+      if (have) { btn.textContent = t('alreadyOwn'); btn.disabled = true; }
+      else if (!canCraft) { btn.textContent = t('noMaterial'); btn.disabled = true; }
+      else { btn.textContent = t('btnCraft'); btn.onclick = () => doCraft(r); }
       row.appendChild(btn);
       list.appendChild(row);
     });
@@ -704,6 +848,9 @@
   }
 
   // ====== 渲染 ======
+  // 不可通行的方块类型 (用于 3D 斜面)
+  const BLOCKED = new Set([T.STONE, T.WATER, T.TREE, T.COAL, T.IRON, T.GOLD, T.DIAMOND, T.EMERALD]);
+
   function draw() {
     ctx.clearRect(0,0,W,H);
     // 背景
@@ -717,12 +864,47 @@
       }
     }
 
+    // 为不可通行的方块加 3D 斜面 (顶左亮, 底右暗)
+    for (let y=0; y<ROWS; y++) {
+      for (let x=0; x<COLS; x++) {
+        const type = state.map[y][x];
+        if (BLOCKED.has(type)) {
+          const px = x*TILE, py = y*TILE;
+          ctx.fillStyle = 'rgba(255,255,255,0.22)';
+          ctx.fillRect(px, py, TILE, 3);            // 顶
+          ctx.fillRect(px, py, 3, TILE);            // 左
+          ctx.fillStyle = 'rgba(0,0,0,0.35)';
+          ctx.fillRect(px, py+TILE-3, TILE, 3);     // 底
+          ctx.fillRect(px+TILE-3, py, 3, TILE);     // 右
+        }
+      }
+    }
+
+    // 网格线 (淡色) — 让每个方块边界都清晰
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 1; x < COLS; x++) {
+      ctx.moveTo(x*TILE + 0.5, 0);
+      ctx.lineTo(x*TILE + 0.5, H);
+    }
+    for (let y = 1; y < ROWS; y++) {
+      ctx.moveTo(0, y*TILE + 0.5);
+      ctx.lineTo(W, y*TILE + 0.5);
+    }
+    ctx.stroke();
+
     // 怪物
     for (const m of state.mobs) {
       if (m.dead) continue;
       m.bob += 0.05;
       const bob = Math.sin(m.bob) * 2;
       drawMob(m.x*TILE, m.y*TILE + bob, m.type);
+      // 怪物脚下阴影
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(m.x*TILE + TILE/2, m.y*TILE + TILE-4, TILE/3, 4, 0, 0, Math.PI*2);
+      ctx.fill();
     }
 
     // Boss
@@ -732,8 +914,20 @@
       drawBoss(state.boss.x*TILE, state.boss.y*TILE + bob, state.boss.type);
     }
 
-    // 玩家
+    // 玩家阴影 + 玩家
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(state.player.px + TILE/2, state.player.py + TILE-4, TILE/3, 4, 0, 0, Math.PI*2);
+    ctx.fill();
     drawPlayer(state.player.px, state.player.py, state.player.dir);
+
+    // 地图外边框 (深色厚框 + 内亮线模拟 MC 木框效果)
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, W-4, H-4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(5, 5, W-10, H-10);
   }
 
   function drawBoss(px, py, type) {
@@ -1080,7 +1274,7 @@
     if (MINEABLE[tileType]) {
       const ore = MINEABLE[tileType];
       if (state.sword < ore.need) {
-        flashMessage('需要更好的剑/工具 (剑等级 ' + ore.need + '+)');
+        flashMessage(t('needSword', { n: ore.need }));
         return;
       }
       startMining(nx, ny, tileType);
@@ -1119,8 +1313,7 @@
           sndPortal();
           showWin();
         } else {
-          // 提示还有怪物
-          flashMessage('还有 ' + alive + ' 只怪物没打败！');
+          flashMessage(t('mobsLeft', { n: alive }));
         }
       }
     }
@@ -1189,104 +1382,104 @@
     let q;
     if (age === 5) {
       const types = ['count','compare','add10','sub10'];
-      const t = pickFrom(types);
-      if (t === 'count') {
+      const qt = pickFrom(types);
+      if (qt === 'count') {
         const item = pickFrom(['apple','gem','pig','sheep','fish','cookie']);
         const n = rint(2, Math.min(10, 4 + lvl));
         const visual = emojiOf(item).repeat(n);
-        q = { text:'数一数有几个?', visual, answer:n, range:10, near:3 };
-      } else if (t === 'compare') {
+        q = { text:t('qCountHow'), visual, answer:n, range:10, near:3 };
+      } else if (qt === 'compare') {
         let a = rint(1, 10), b = rint(1, 10);
         while (a === b) b = rint(1, 10);
         const big = Math.max(a,b), small = Math.min(a,b);
-        const opts = new Set([String(a), String(b), String(big+1)]);
+        const opts2 = new Set([String(a), String(b), String(big+1)]);
         let probe = small - 1;
-        while (opts.size < 4) {
-          if (probe >= 0) opts.add(String(probe));
-          probe = (probe > 0) ? probe - 1 : big + 2 + (opts.size);
+        while (opts2.size < 4) {
+          if (probe >= 0) opts2.add(String(probe));
+          probe = (probe > 0) ? probe - 1 : big + 2 + (opts2.size);
         }
         q = {
-          text: `${a} 和 ${b} 哪个大?`,
+          text: t('qWhichBigger', { a, b }),
           visual: '',
-          options: shuffle([...opts]).slice(0,4),
+          options: shuffle([...opts2]).slice(0,4),
           correctStr: String(big)
         };
-      } else if (t === 'add10') {
+      } else if (qt === 'add10') {
         const a = rint(1, 5), b = rint(1, Math.min(5, 10-a));
         q = { text:`${a} + ${b} = ?`, visual: emojiOf('apple').repeat(a) + ' + ' + emojiOf('apple').repeat(b), answer:a+b, range:10, near:3 };
-      } else { // sub10
+      } else {
         const a = rint(2, 10), b = rint(1, a);
         q = { text:`${a} - ${b} = ?`, visual:'', answer:a-b, range:10, near:3 };
       }
     } else if (age === 6) {
       const types = ['add20','sub20','compare','shape','add10pic'];
-      const t = pickFrom(types);
-      if (t === 'add20') {
+      const qt = pickFrom(types);
+      if (qt === 'add20') {
         const a = rint(1, 15), b = rint(1, 20-a);
         q = { text:`${a} + ${b} = ?`, visual:'', answer:a+b, range:20, near:4 };
-      } else if (t === 'sub20') {
+      } else if (qt === 'sub20') {
         const a = rint(5, 20), b = rint(1, a-1);
         q = { text:`${a} - ${b} = ?`, visual:'', answer:a-b, range:20, near:4 };
-      } else if (t === 'compare') {
+      } else if (qt === 'compare') {
         const a = rint(5, 30), b = rint(5, 30);
         const symbol = a > b ? '>' : (a < b ? '<' : '=');
         q = {
           text: `${a} ⊡ ${b}`,
-          visual: '请选择正确的符号',
+          visual: t('qChooseSymbol'),
           options: shuffle(['>', '<', '=', '?']),
           correctStr: symbol
         };
-      } else if (t === 'shape') {
+      } else if (qt === 'shape') {
         const shapes = [
-          { name:'三角形', sides:3 },
-          { name:'正方形', sides:4 },
-          { name:'五边形', sides:5 },
-          { name:'六边形', sides:6 },
+          { key:'shapeTri', sides:3 },
+          { key:'shapeSq',  sides:4 },
+          { key:'shapePent',sides:5 },
+          { key:'shapeHex', sides:6 },
         ];
         const s = pickFrom(shapes);
-        q = { text:`${s.name} 有几条边?`, visual:'', answer:s.sides, range:8, near:2 };
-      } else { // add10pic
+        q = { text:t('qShapeSides', { shape:t(s.key) }), visual:'', answer:s.sides, range:8, near:2 };
+      } else {
         const a = rint(2, 8), b = rint(2, 8);
-        q = { text:'一共有几个?', visual: emojiOf('gem').repeat(a) + ' + ' + emojiOf('gem').repeat(b), answer:a+b, range:20, near:3 };
+        q = { text:t('qTotalHow'), visual: emojiOf('gem').repeat(a) + ' + ' + emojiOf('gem').repeat(b), answer:a+b, range:20, near:3 };
       }
     } else if (age === 7) {
       const types = ['add100','sub100','mul_small','compare100','mixed7'];
-      const t = pickFrom(types);
-      if (t === 'add100') {
+      const qt = pickFrom(types);
+      if (qt === 'add100') {
         const a = rint(10, 60), b = rint(10, Math.min(40, 99-a));
         q = { text:`${a} + ${b} = ?`, visual:'', answer:a+b, range:100, near:8 };
-      } else if (t === 'sub100') {
+      } else if (qt === 'sub100') {
         const a = rint(20, 99), b = rint(5, a-1);
         q = { text:`${a} - ${b} = ?`, visual:'', answer:a-b, range:100, near:6 };
-      } else if (t === 'mul_small') {
+      } else if (qt === 'mul_small') {
         const tables = [2, 5, 10];
         const a = pickFrom(tables), b = rint(1, 9);
         q = { text:`${a} × ${b} = ?`, visual:'', answer:a*b, range:100, near:5 };
-      } else if (t === 'compare100') {
+      } else if (qt === 'compare100') {
         const a = rint(20, 99), b = rint(20, 99);
         const symbol = a > b ? '>' : (a < b ? '<' : '=');
         q = {
           text:`${a} ⊡ ${b}`,
-          visual:'请选择正确的符号',
+          visual:t('qChooseSymbol'),
           options: shuffle(['>','<','=','?']),
           correctStr: symbol
         };
-      } else { // mixed7
+      } else {
         const a = rint(1, 9), b = rint(1, 9), c = rint(1, 9);
         const ans = a + b - c;
         if (ans < 0) { q = { text:`${a} + ${b} = ?`, visual:'', answer:a+b, range:20, near:3 }; }
         else q = { text:`${a} + ${b} - ${c} = ?`, visual:'', answer:ans, range:20, near:3 };
       }
-    } else { // 8岁
+    } else {
       const types = ['mul','div','mixed8','add100'];
-      const t = pickFrom(types);
-      if (t === 'mul') {
+      const qt = pickFrom(types);
+      if (qt === 'mul') {
         const a = rint(2, 9), b = rint(2, 9);
         q = { text:`${a} × ${b} = ?`, visual:'', answer:a*b, range:90, near:6 };
-      } else if (t === 'div') {
+      } else if (qt === 'div') {
         const b = rint(2, 9), c = rint(1, 9), a = b*c;
         q = { text:`${a} ÷ ${b} = ?`, visual:'', answer:c, range:12, near:3 };
-      } else if (t === 'mixed8') {
+      } else if (qt === 'mixed8') {
         const a = rint(2, 9), b = rint(2, 9), c = rint(1, 9);
         const ans = a*b + c;
         q = { text:`${a} × ${b} + ${c} = ?`, visual:'', answer:ans, range:100, near:6 };
@@ -1318,7 +1511,7 @@
     state.activeMob = mob;
     state.questionWrongTries = 0;
     openBattleOverlay();
-    document.getElementById('mobName').textContent = MOBS[mob.type].name + ' 拦住了你！';
+    document.getElementById('mobName').textContent = mobName(mob.type) + ' ' + t('mobBlocks');
     drawBattleMob(mob.type);
     showQuestion();
   }
@@ -1329,8 +1522,9 @@
     state.activeMineTile = { x, y, type };
     state.questionWrongTries = 0;
     openBattleOverlay();
-    const ore = MINEABLE[type];
-    document.getElementById('mobName').textContent = '挖掘 ' + ore.name + ' (徒手)';
+    const oreKey = { [T.TREE]:'matWood', [T.STONE]:'matStone', [T.COAL]:'matCoal',
+                     [T.IRON]:'matIron', [T.GOLD]:'matGold', [T.DIAMOND]:'matDiamond', [T.EMERALD]:'matEmerald' };
+    document.getElementById('mobName').textContent = t('miningPrefix') + ' ' + t(oreKey[type]) + ' ' + t('miningHand');
     drawOreIcon(type);
     showQuestion({ easierBy: 1 });
   }
@@ -1341,8 +1535,9 @@
     state.activeMob = null;
     state.questionWrongTries = 0;
     openBattleOverlay();
-    const bn = BOSS_NAMES[state.boss.type];
-    document.getElementById('mobName').textContent = bn + ' (HP: ' + state.boss.hp + '/' + state.boss.maxHp + ')';
+    const bn = bossName(state.boss.type);
+    document.getElementById('mobName').textContent =
+      bn + ' (' + t('bossHp') + ': ' + state.boss.hp + '/' + state.boss.maxHp + ')';
     drawBattleMob(state.boss.type === 'enderdragon' ? 'enderman' :
                   state.boss.type === 'wither' ? 'skeleton' : 'creeper');
     showQuestion({ harderBy: 1 });
@@ -1390,7 +1585,7 @@
     if (opt === q.correctStr) {
       btn.classList.add('correct');
       fb.className = 'feedback good';
-      const praises = ['太棒了！🎉', '答对了！⭐', '真厉害！💎', '完美！🏆', '聪明的玩家！✨'];
+      const praises = t('praises');
       fb.textContent = praises[Math.floor(Math.random()*praises.length)];
       sndCorrect();
       if (state.inMining) {
@@ -1406,7 +1601,7 @@
           closeBattleOverlay();
           state.inMining = false;
           state.activeMineTile = null;
-          flashMessage('+' + amount + ' ' + MATERIAL_NAMES[mat] + ' ' + MATERIAL_EMOJI[mat]);
+          flashMessage(t('gotItem', { n:amount, name:matName(mat), emoji:MATERIAL_EMOJI[mat] }));
           sndGem();
         }, 900);
       } else if (state.inBoss && state.boss) {
@@ -1430,7 +1625,7 @@
           // 还有 HP, 出下一题
           setTimeout(() => {
             document.getElementById('mobName').textContent =
-              BOSS_NAMES[state.boss.type] + ' (HP: ' + state.boss.hp + '/' + state.boss.maxHp + ')';
+              bossName(state.boss.type) + ' (' + t('bossHp') + ': ' + state.boss.hp + '/' + state.boss.maxHp + ')';
             state.questionWrongTries = 0;
             showQuestion({ harderBy: 1 });
           }, 900);
@@ -1455,14 +1650,14 @@
       btn.classList.add('wrong');
       btn.disabled = true;
       fb.className = 'feedback bad';
-      fb.textContent = '再想想看！💪';
+      fb.textContent = t('tryAgain');
       sndWrong();
       state.questionWrongTries++;
       const maxTries = state.inMining ? 2 : (state.inBoss ? 2 : SWORD_EFFECT[state.sword].retries);
       if (state.questionWrongTries >= maxTries) {
         if (state.inMining) {
           // 挖矿失败: 不扣血,关闭模态,方块保留
-          fb.textContent = '挖矿失败！正确答案是 ' + q.correctStr;
+          fb.textContent = t('mineFail') + ' ' + q.correctStr;
           setTimeout(() => {
             closeBattleOverlay();
             state.inMining = false;
@@ -1479,7 +1674,7 @@
             state.hp--;
           }
           updateHud();
-          fb.textContent = '正确答案是 ' + q.correctStr + (usedPotion ? '。 自动使用治疗药水 🧪 +1❤' : '。 ❤ -1');
+          fb.textContent = t('correctIs') + ' ' + q.correctStr + (usedPotion ? t('usedPotion') : t('hpMinus'));
           setTimeout(() => {
             closeBattleOverlay();
             state.inBattle = false;
@@ -1499,12 +1694,10 @@
   function showWin() {
     document.getElementById('winScore').textContent = state.score;
     const winText = document.getElementById('winText');
-    if (state.inBoss) {
-      winText.innerHTML =
-        '🏆 你打败了 <b>' + BOSS_NAMES[state.boss.type] + '</b>！<br>' +
-        '获得 50 💎 + 200 ⭐ + 钻石×3 + 绿宝石×1';
+    if (state.inBoss && state.boss) {
+      winText.innerHTML = t('winBoss', { name: bossName(state.boss.type) });
     } else {
-      winText.textContent = '你打败了所有怪物，找到了传送门！';
+      winText.textContent = t('winNormal');
     }
     const overlay = document.getElementById('winOverlay');
     overlay.style.display = 'flex';
@@ -1613,6 +1806,25 @@
   document.getElementById('btnCloseCraft').onclick = () => {
     document.getElementById('craftOverlay').style.display = 'none';
   };
+
+  // ====== 语言切换 ======
+  function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const val = t(key);
+      if (val != null) el.textContent = val;
+    });
+    document.getElementById('btnLang').textContent = t('langLabel');
+    updateHud();
+    // 如果合成面板正在显示, 重新渲染
+    if (document.getElementById('craftOverlay').style.display === 'flex') openCraftPanel();
+  }
+  document.getElementById('btnLang').onclick = () => {
+    state.lang = (state.lang === 'zh') ? 'en' : 'zh';
+    applyI18n();
+  };
+  // 初始化时应用一次 i18n (默认 zh, 但允许后续切换)
+  applyI18n();
 
   // ====== 主循环 ======
   function loop() {
