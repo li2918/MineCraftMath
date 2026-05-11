@@ -2192,7 +2192,7 @@
     el.addEventListener('touchstart', f, {passive:false});
     el.addEventListener('mousedown', f);
   }
-  document.querySelectorAll('#pad button[data-action]').forEach(b => {
+  document.querySelectorAll('#pad button[data-action], #actBtns button[data-action]').forEach(b => {
     const act = b.dataset.action;
     if (act === 'left' || act === 'right') bindHoldButton(b, act);
     else if (act === 'jump') bindHoldButton(b, 'jump');
