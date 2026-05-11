@@ -1,0 +1,1635 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>方块数学冒险 · MineCraft Math</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%; background: #1b1b2e; color: #fff;
+    font-family: "Minecraft", "PingFang SC", "Microsoft YaHei", monospace, sans-serif;
+    overflow: hidden; user-select: none;
+  }
+  #game {
+    position: relative; width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    background:
+      radial-gradient(ellipse at top, #4a6fa5 0%, #1b1b2e 70%);
+  }
+  #hud {
+    width: 100%; max-width: 720px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px; gap: 10px; font-size: 14px;
+    background: rgba(0,0,0,0.35); border-bottom: 3px solid #2c2c44;
+    flex-wrap: wrap;
+  }
+  #hud .group { display: flex; align-items: center; gap: 6px; }
+  #hud .badge {
+    background: #2c2c44; padding: 4px 10px; border-radius: 4px;
+    border-bottom: 2px solid #000; font-size: 13px;
+  }
+  #hud .hearts { color: #ff5252; letter-spacing: 2px; font-size: 18px; }
+  #hud .diamonds { color: #6cd6ff; }
+  #hud .level { color: #ffd54a; }
+  #hud .score { color: #b6ff7f; }
+  #hud button.tiny {
+    background: #5a3a1a; color: #fff; border: none; padding: 4px 10px;
+    border-bottom: 2px solid #000; font-family: inherit; font-size: 12px;
+    cursor: pointer; border-radius: 3px;
+  }
+
+  #stage {
+    position: relative; width: 100%; max-width: 720px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px;
+  }
+  canvas#world {
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    background: #2a4d2a;
+    border: 4px solid #1a1a1a;
+    box-shadow: 0 0 0 2px #555, 0 8px 0 #000;
+    max-width: 100%; height: auto;
+    touch-action: none;
+  }
+
+  /* On-screen D-pad for touch */
+  #pad {
+    position: fixed; bottom: 16px; left: 16px;
+    display: grid; grid-template-columns: 56px 56px 56px;
+    grid-template-rows: 56px 56px 56px; gap: 4px;
+    opacity: 0.85; z-index: 50;
+  }
+  #pad button {
+    background: rgba(80,80,120,0.85); color: #fff; border: 2px solid #000;
+    border-radius: 8px; font-size: 22px; font-weight: bold;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+  #pad button:active { background: #6cd6ff; }
+  #pad .empty { visibility: hidden; }
+  @media (hover:hover) and (pointer:fine) { #pad { display: none; } }
+
+  /* Overlay screens (menu, battle, level-complete) */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 16px;
+  }
+  .panel {
+    background: #c6c6c6;
+    border: 4px solid #fff;
+    box-shadow:
+      inset -4px -4px 0 #555,
+      inset 4px 4px 0 #fefefe,
+      0 0 0 4px #000, 0 12px 0 #000;
+    padding: 24px; max-width: 520px; width: 100%;
+    color: #222; text-align: center;
+  }
+  .panel h1 { font-size: 26px; margin-bottom: 8px; color: #2b2b2b; text-shadow: 2px 2px 0 #fff; }
+  .panel h2 { font-size: 20px; margin-bottom: 12px; }
+  .panel p { margin: 8px 0; font-size: 14px; line-height: 1.5; }
+  .panel .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+  .mcbtn {
+    background: #888; color: #fff; border: none;
+    padding: 10px 16px; font-family: inherit; font-size: 14px; cursor: pointer;
+    border-top: 3px solid #ddd; border-left: 3px solid #ddd;
+    border-right: 3px solid #444; border-bottom: 3px solid #444;
+    text-shadow: 1px 1px 0 #000;
+  }
+  .mcbtn:hover { background: #9aa; }
+  .mcbtn:active { border-top-color: #444; border-left-color: #444; border-right-color: #ddd; border-bottom-color: #ddd; }
+  .mcbtn.primary { background: #5a8a3a; }
+  .mcbtn.primary:hover { background: #6ea043; }
+  .mcbtn.warn { background: #8a3a3a; }
+
+  /* Battle modal-specific */
+  .battle .question {
+    font-size: 28px; font-weight: bold; margin: 12px 0 6px; color: #1a1a1a;
+    background: #fffbe6; padding: 14px; border: 3px solid #8a6a2a;
+    box-shadow: inset 0 -3px 0 #c9a85a;
+    min-height: 60px; display:flex; align-items:center; justify-content:center;
+    flex-wrap: wrap; gap: 4px;
+  }
+  .battle .visual {
+    font-size: 32px; line-height: 1.2; min-height: 44px;
+    margin: 8px 0; letter-spacing: 4px;
+    background: #2a4d2a; color: #fff; padding: 10px; border: 3px solid #1a3a1a;
+    border-radius: 4px;
+  }
+  .battle .visual.empty { display:none; }
+  .battle .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .battle .opt {
+    background: #444; color: #fff; border: 3px solid #000; padding: 14px;
+    font-size: 22px; font-weight: bold; cursor: pointer; font-family: inherit;
+    border-top-color: #888; border-left-color: #888;
+    transition: transform 0.05s;
+  }
+  .battle .opt:hover { background: #555; }
+  .battle .opt:active { transform: translateY(2px); }
+  .battle .opt.correct { background: #4caf50; }
+  .battle .opt.wrong { background: #d32f2f; }
+  .battle .mob-banner {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 6px; font-size: 14px; color: #333;
+  }
+  .battle .mob-name { font-weight: bold; }
+  .battle .feedback {
+    min-height: 24px; margin-top: 8px; font-size: 16px; font-weight: bold;
+  }
+  .battle .feedback.good { color: #2e7d32; }
+  .battle .feedback.bad { color: #c62828; }
+
+  .age-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .age-card {
+    background: #5a8a3a; color: #fff; padding: 12px; border: 3px solid #000;
+    border-top-color: #8eb46a; border-left-color: #8eb46a;
+    cursor: pointer; text-align: center;
+  }
+  .age-card:hover { background: #6ea043; }
+  .age-card.active { background: #2e7d32; outline: 3px solid #ffd54a; }
+  .age-card .big { font-size: 22px; font-weight: bold; display: block; }
+  .age-card .small { font-size: 12px; opacity: 0.95; }
+
+  .credit { position: fixed; bottom: 6px; right: 10px; font-size: 10px; opacity: 0.4; }
+
+  /* 背包/合成 */
+  .bag-cell {
+    background: #333; color: #fff; padding: 6px 10px; border: 2px solid #000;
+    border-top-color: #777; border-left-color: #777;
+    font-size: 13px; min-width: 60px;
+  }
+  .recipe-row {
+    background: #ddd; border: 2px solid #000;
+    border-top-color: #fff; border-left-color: #fff;
+    padding: 8px 10px; display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: #222;
+  }
+  .recipe-row .rname { flex: 0 0 90px; font-weight: bold; }
+  .recipe-row .rneed { flex: 1; font-size: 12px; }
+  .recipe-row button {
+    background: #5a8a3a; color: #fff; border: 2px solid #000;
+    padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: 12px;
+    border-top-color: #8eb46a; border-left-color: #8eb46a;
+  }
+  .recipe-row button:disabled { background: #888; color: #ccc; cursor: not-allowed; }
+  .recipe-row.have { opacity: 0.5; }
+
+  @media (max-width: 480px) {
+    #hud { font-size: 12px; padding: 6px 8px; }
+    .panel h1 { font-size: 20px; }
+    .battle .question { font-size: 22px; }
+    .battle .opt { font-size: 20px; padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="hud">
+    <div class="group">
+      <span class="badge level">第 <span id="hudLevel">1</span> 关</span>
+      <span class="badge">🧒 <span id="hudAge">5岁</span></span>
+    </div>
+    <div class="group">
+      <span class="badge hearts" id="hudHearts">❤❤❤</span>
+      <span class="badge diamonds">💎 <span id="hudGems">0</span></span>
+      <span class="badge score">⭐ <span id="hudScore">0</span></span>
+    </div>
+    <div class="group">
+      <span class="badge" id="hudSword">🗡️空手</span>
+      <span class="badge" id="hudPotion">🧪 0</span>
+      <button class="tiny" id="btnCraft">背包/合成</button>
+      <button class="tiny" id="btnMenu">菜单</button>
+    </div>
+  </div>
+
+  <div id="stage">
+    <canvas id="world" width="640" height="400"></canvas>
+  </div>
+</div>
+
+<!-- Touch D-Pad -->
+<div id="pad" aria-hidden="true">
+  <button class="empty"></button>
+  <button data-dir="up">▲</button>
+  <button class="empty"></button>
+  <button data-dir="left">◀</button>
+  <button class="empty"></button>
+  <button data-dir="right">▶</button>
+  <button class="empty"></button>
+  <button data-dir="down">▼</button>
+  <button class="empty"></button>
+</div>
+
+<!-- Start menu -->
+<div id="menuOverlay" class="overlay">
+  <div class="panel">
+    <h1>🟩 方块数学冒险 🟫</h1>
+    <p>在方块世界里探险，遇到怪物答数学题，闯关收集钻石！</p>
+
+    <h2>选择年龄</h2>
+    <div class="age-grid" id="ageGrid">
+      <div class="age-card" data-age="5"><span class="big">5 岁</span><span class="small">数数·比大小·10以内加减</span></div>
+      <div class="age-card" data-age="6"><span class="big">6 岁</span><span class="small">20以内加减·形状</span></div>
+      <div class="age-card" data-age="7"><span class="big">7 岁</span><span class="small">100以内加减·入门乘法</span></div>
+      <div class="age-card" data-age="8"><span class="big">8 岁</span><span class="small">乘法口诀·入门除法</span></div>
+    </div>
+
+    <p style="font-size:12px;color:#555">
+      🎮 <b>电脑</b>：方向键或 WASD 移动 &nbsp; | &nbsp;
+      📱 <b>手机/平板</b>：屏幕左下虚拟方向键
+    </p>
+
+    <div class="row">
+      <button class="mcbtn primary" id="btnStart">开始冒险</button>
+    </div>
+  </div>
+</div>
+
+<!-- Battle modal -->
+<div id="battleOverlay" class="overlay battle" style="display:none">
+  <div class="panel">
+    <div class="mob-banner">
+      <canvas id="battleMobCanvas" width="48" height="48" style="image-rendering:pixelated"></canvas>
+      <div><span class="mob-name" id="mobName">僵尸</span> 拦住了你！</div>
+    </div>
+    <div class="visual empty" id="qVisual"></div>
+    <div class="question" id="qText">1 + 1 = ?</div>
+    <div class="options" id="qOptions"></div>
+    <div class="feedback" id="qFeedback">&nbsp;</div>
+  </div>
+</div>
+
+<!-- Level complete modal -->
+<div id="winOverlay" class="overlay" style="display:none">
+  <div class="panel">
+    <h1>🎉 通关啦！</h1>
+    <p id="winText">你打败了所有怪物，找到了传送门！</p>
+    <p>本关得分：<b id="winScore">0</b></p>
+    <div class="row">
+      <button class="mcbtn primary" id="btnNext">下一关 →</button>
+      <button class="mcbtn" id="btnReplay">再玩本关</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game over modal -->
+<div id="loseOverlay" class="overlay" style="display:none">
+  <div class="panel">
+    <h1>💀 游戏结束</h1>
+    <p>没关系，多练习就会越来越棒！</p>
+    <p>累计得分：<b id="loseScore">0</b></p>
+    <div class="row">
+      <button class="mcbtn primary" id="btnRetry">重新开始</button>
+      <button class="mcbtn" id="btnBackMenu">返回菜单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 背包/合成 -->
+<div id="craftOverlay" class="overlay" style="display:none">
+  <div class="panel" style="max-width:560px">
+    <h1>🎒 背包 / 🛠️ 合成</h1>
+    <div id="bagList" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0"></div>
+    <p style="font-size:13px;color:#444">当前装备: <b id="curSword">空手</b> &nbsp;|&nbsp; 治疗药水: <b id="curPot">0</b></p>
+    <h2 style="margin-top:14px">合成配方</h2>
+    <div id="recipeList" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div class="row">
+      <button class="mcbtn primary" id="btnCloseCraft">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="credit">made for my son · v1</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ====== 配置 ======
+  const TILE = 40;
+  const COLS = 16;
+  const ROWS = 10;
+  const W = TILE * COLS;
+  const H = TILE * ROWS;
+
+  // 地块类型
+  const T = {
+    GRASS:0, DIRT:1, STONE:2, WATER:3, TREE:4, SAND:5, PATH:6, PORTAL:7, FLOWER:8,
+    COAL:9, IRON:10, GOLD:11, DIAMOND:12, EMERALD:13,
+    BOSS_FLOOR:14, BOSS_PORTAL:15
+  };
+  const PASSABLE = new Set([T.GRASS, T.DIRT, T.SAND, T.PATH, T.PORTAL, T.FLOWER, T.BOSS_FLOOR, T.BOSS_PORTAL]);
+  // 可挖掘 = 挡路但可以挖
+  const MINEABLE = {
+    [T.TREE]:    { material:'wood',    name:'木头',   color:'#5fbf4a', need:0 },
+    [T.STONE]:   { material:'stone',   name:'石头',   color:'#aaa',    need:0 },
+    [T.COAL]:    { material:'coal',    name:'煤炭',   color:'#222',    need:0 },
+    [T.IRON]:    { material:'iron',    name:'铁矿',   color:'#d8a878', need:1 },
+    [T.GOLD]:    { material:'gold',    name:'金矿',   color:'#ffd54a', need:2 },
+    [T.DIAMOND]: { material:'diamond', name:'钻石矿', color:'#5fe0e0', need:2 },
+    [T.EMERALD]: { material:'emerald', name:'绿宝石', color:'#3aff7f', need:3 },
+  };
+  // 材料中文名
+  const MATERIAL_NAMES = {
+    wood:'木头', stone:'石头', coal:'煤', iron:'铁', gold:'金', diamond:'钻石', emerald:'绿宝石'
+  };
+  const MATERIAL_EMOJI = {
+    wood:'🪵', stone:'🪨', coal:'⬛', iron:'🟫', gold:'🟨', diamond:'💎', emerald:'🟩'
+  };
+
+  // 合成配方: 剑等级 1-4, 治疗药水
+  const RECIPES = [
+    { id:'sword1', name:'木剑',    icon:'🗡️', need:{wood:2},                       give:{type:'sword', level:1} },
+    { id:'sword2', name:'石剑',    icon:'⚔️', need:{wood:1, stone:3},               give:{type:'sword', level:2} },
+    { id:'sword3', name:'铁剑',    icon:'🗡️', need:{wood:1, iron:2},                give:{type:'sword', level:3} },
+    { id:'sword4', name:'钻石剑',  icon:'💠', need:{wood:1, iron:1, diamond:2},     give:{type:'sword', level:4} },
+    { id:'potion', name:'治疗药水', icon:'🧪', need:{gold:1, emerald:1},             give:{type:'potion', count:1} },
+  ];
+
+  // 剑等级效果
+  const SWORD_EFFECT = [
+    { dmgBonus:0, gemBonus:0, retries:3, label:'空手' },
+    { dmgBonus:0, gemBonus:1, retries:3, label:'木剑'   },
+    { dmgBonus:0, gemBonus:2, retries:4, label:'石剑'   },
+    { dmgBonus:0, gemBonus:3, retries:4, label:'铁剑'   },
+    { dmgBonus:0, gemBonus:5, retries:5, label:'钻石剑' },
+  ];
+
+  // 怪物类型
+  const MOBS = {
+    zombie:   { name:'僵尸',   color:'#3a7d3a', skin:'#5fbf5f', shirt:'#3a4a2a' },
+    skeleton: { name:'骷髅',   color:'#dddddd', skin:'#f5f5f5', shirt:'#999' },
+    creeper:  { name:'苦力怕', color:'#6cbf3f', skin:'#6cbf3f', shirt:'#3d8a26' },
+    spider:   { name:'蜘蛛',   color:'#5a3a3a', skin:'#3a1a1a', shirt:'#1a0a0a' },
+    slime:    { name:'史莱姆', color:'#7fce5f', skin:'#a8e683', shirt:'#5a9a3a' },
+    enderman: { name:'末影人', color:'#1a0a1a', skin:'#1a0a1a', shirt:'#1a0a1a' },
+  };
+
+  // ====== 状态 ======
+  const state = {
+    age: 5,
+    level: 1,
+    score: 0,
+    gems: 0,
+    hp: 3,
+    map: null,
+    mobs: [],
+    portal: { x:0, y:0 },
+    player: { tx:0, ty:0, px:0, py:0, dir:'down', moving:false },
+    pendingDir: null,
+    activeMob: null,
+    activeMineTile: null,        // {x,y,type}
+    inBattle: false,
+    inMining: false,
+    inBoss: false,
+    boss: null,                  // {type, hp, maxHp}
+    questionWrongTries: 0,
+    audioCtx: null,
+    inventory: { wood:0, stone:0, coal:0, iron:0, gold:0, diamond:0, emerald:0 },
+    sword: 0,                    // 0-4
+    potions: 0,                  // 治疗药水库存
+  };
+
+  // ====== Canvas 设置 ======
+  const canvas = document.getElementById('world');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  // 让 canvas 自适应屏幕但保持像素比
+  function fitCanvas() {
+    const stage = document.getElementById('stage');
+    const maxW = Math.min(window.innerWidth - 20, 720);
+    const scale = Math.min(1, maxW / W);
+    canvas.style.width = (W * scale) + 'px';
+    canvas.style.height = (H * scale) + 'px';
+  }
+  window.addEventListener('resize', fitCanvas);
+
+  // ====== 简单音效 (Web Audio) ======
+  function beep(freq, dur=0.12, type='square', vol=0.05) {
+    try {
+      if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctxA = state.audioCtx;
+      const osc = ctxA.createOscillator();
+      const g = ctxA.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      g.gain.value = vol;
+      osc.connect(g); g.connect(ctxA.destination);
+      const t = ctxA.currentTime;
+      osc.start(t);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.stop(t + dur);
+    } catch(e){}
+  }
+  const sndCorrect = () => { beep(660,0.1); setTimeout(()=>beep(880,0.16),90); };
+  const sndWrong   = () => { beep(200,0.18,'sawtooth',0.06); };
+  const sndStep    = () => { beep(180,0.04,'square',0.02); };
+  const sndPortal  = () => { beep(440,0.1); setTimeout(()=>beep(660,0.1),90); setTimeout(()=>beep(880,0.18),180); };
+  const sndGem     = () => { beep(1200,0.08,'triangle',0.05); };
+
+  // ====== 地图生成 ======
+  function genMap(seed = Date.now()) {
+    const r = mulberry32(seed);
+    const map = [];
+    for (let y = 0; y < ROWS; y++) {
+      const row = [];
+      for (let x = 0; x < COLS; x++) {
+        row.push(T.GRASS);
+      }
+      map.push(row);
+    }
+    // 散布水洼
+    placeBlob(map, T.WATER, 1 + Math.floor(r()*2), 3, 6, r);
+    // 沙地围水
+    for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++) {
+      if (map[y][x] === T.GRASS && hasNeighbor(map,x,y,T.WATER)) {
+        if (r() < 0.6) map[y][x] = T.SAND;
+      }
+    }
+    // 石头
+    placeBlob(map, T.STONE, 2, 2, 5, r);
+    // 树
+    for (let i = 0; i < 8 + Math.floor(r()*5); i++) {
+      const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
+      if (map[y][x] === T.GRASS) map[y][x] = T.TREE;
+    }
+    // 花
+    for (let i = 0; i < 5; i++) {
+      const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
+      if (map[y][x] === T.GRASS) map[y][x] = T.FLOWER;
+    }
+    // 泥土小路
+    for (let i = 0; i < 4; i++) {
+      const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
+      if (map[y][x] === T.GRASS) map[y][x] = T.DIRT;
+    }
+    // 矿石: 煤(多)/铁(中)/金(少)/钻石(稀)/绿宝石(极稀)
+    // 优先把矿石放在石头堆附近
+    const oreSpec = [
+      { type: T.COAL,    count: 3 + Math.floor(r()*2) },
+      { type: T.IRON,    count: 2 + Math.floor(r()*2) },
+      { type: T.GOLD,    count: 1 + Math.floor(r()*2) },
+      { type: T.DIAMOND, count: 1 + Math.floor(r()*1) },
+      { type: T.EMERALD, count: r() < 0.5 ? 1 : 0 },
+    ];
+    for (const spec of oreSpec) {
+      for (let i = 0; i < spec.count; i++) {
+        let placed = false;
+        // 先尝试在石头旁
+        for (let tries=0; tries<30 && !placed; tries++) {
+          const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
+          if (map[y][x] === T.STONE && hasNeighbor(map, x, y, T.STONE)) {
+            map[y][x] = spec.type; placed = true; break;
+          }
+        }
+        // 否则随机放草地
+        if (!placed) for (let tries=0; tries<20 && !placed; tries++) {
+          const x = Math.floor(r()*COLS), y = Math.floor(r()*ROWS);
+          if (map[y][x] === T.GRASS || map[y][x] === T.STONE) {
+            map[y][x] = spec.type; placed = true;
+          }
+        }
+      }
+    }
+    return map;
+  }
+
+  // Boss 关地图: 中央竞技场
+  function genBossMap() {
+    const map = [];
+    for (let y = 0; y < ROWS; y++) {
+      const row = [];
+      for (let x = 0; x < COLS; x++) {
+        // 外围一圈石头
+        if (x===0||y===0||x===COLS-1||y===ROWS-1) row.push(T.STONE);
+        else row.push(T.BOSS_FLOOR);
+      }
+      map.push(row);
+    }
+    // 几个装饰
+    for (let i = 0; i < 4; i++) {
+      const x = 2 + Math.floor(Math.random()*(COLS-4));
+      const y = 2 + Math.floor(Math.random()*(ROWS-4));
+      if (map[y][x] === T.BOSS_FLOOR) map[y][x] = T.STONE;
+    }
+    return map;
+  }
+
+  function placeBlob(map, type, count, minSize, maxSize, r) {
+    for (let i = 0; i < count; i++) {
+      const cx = 1 + Math.floor(r()*(COLS-2));
+      const cy = 1 + Math.floor(r()*(ROWS-2));
+      const size = minSize + Math.floor(r()*(maxSize-minSize));
+      for (let dy=-size; dy<=size; dy++) for (let dx=-size; dx<=size; dx++) {
+        const x = cx+dx, y = cy+dy;
+        if (x<0||y<0||x>=COLS||y>=ROWS) continue;
+        const d = Math.abs(dx)+Math.abs(dy);
+        if (d <= size && r() < 0.7) map[y][x] = type;
+      }
+    }
+  }
+
+  function hasNeighbor(map, x, y, type) {
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    return dirs.some(([dx,dy]) => {
+      const nx=x+dx, ny=y+dy;
+      return nx>=0&&ny>=0&&nx<COLS&&ny<ROWS && map[ny][nx]===type;
+    });
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = a;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function randomPassableTile(map, avoid=[]) {
+    for (let tries = 0; tries < 500; tries++) {
+      const x = Math.floor(Math.random()*COLS);
+      const y = Math.floor(Math.random()*ROWS);
+      if (!PASSABLE.has(map[y][x])) continue;
+      if (avoid.some(a => Math.abs(a.x-x)+Math.abs(a.y-y) < 3)) continue;
+      return {x,y};
+    }
+    // fallback
+    for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++) {
+      if (PASSABLE.has(map[y][x])) return {x,y};
+    }
+    return {x:0,y:0};
+  }
+
+  // ====== 关卡初始化 ======
+  function buildLevel() {
+    state.pendingDir = null;
+    state.activeMob = null;
+    state.activeMineTile = null;
+    state.inBattle = false;
+    state.inMining = false;
+    state.inBoss = false;
+    state.boss = null;
+
+    if (state.level % 5 === 0) {
+      buildBossLevel();
+    } else {
+      buildNormalLevel();
+    }
+    updateHud();
+  }
+
+  function buildNormalLevel() {
+    const map = genMap(Date.now() + state.level);
+    state.map = map;
+
+    const placed = [];
+    const player = randomPassableTile(map);
+    placed.push(player);
+    state.player.tx = player.x; state.player.ty = player.y;
+    state.player.px = player.x * TILE; state.player.py = player.y * TILE;
+    state.player.moving = false;
+
+    // 怪物
+    const mobCount = Math.min(3 + Math.floor(state.level/2), 7);
+    const mobNames = Object.keys(MOBS);
+    state.mobs = [];
+    for (let i = 0; i < mobCount; i++) {
+      const pos = randomPassableTile(map, placed);
+      placed.push(pos);
+      const type = mobNames[Math.floor(Math.random()*mobNames.length)];
+      state.mobs.push({ x:pos.x, y:pos.y, type, dead:false, bob:Math.random()*Math.PI*2 });
+    }
+
+    // 传送门
+    const portal = randomPassableTile(map, placed);
+    map[portal.y][portal.x] = T.PORTAL;
+    state.portal = portal;
+  }
+
+  function buildBossLevel() {
+    state.map = genBossMap();
+    state.inBoss = true;
+    // 玩家放左边
+    state.player.tx = 2; state.player.ty = Math.floor(ROWS/2);
+    state.player.px = state.player.tx * TILE; state.player.py = state.player.ty * TILE;
+    state.player.moving = false;
+    state.mobs = [];
+    // Boss 站右边 2x2
+    const bossTypes = ['wither', 'enderdragon', 'guardian'];
+    const bossType = bossTypes[(state.level/5 - 1) % bossTypes.length];
+    state.boss = {
+      type: bossType,
+      x: COLS - 4,
+      y: Math.floor(ROWS/2) - 1,
+      hp: 5,
+      maxHp: 5,
+      bob: 0,
+    };
+    state.portal = { x:-1, y:-1 }; // 无传送门
+  }
+
+  const BOSS_NAMES = {
+    wither: '凋灵',
+    enderdragon: '末影龙',
+    guardian: '远古守卫者',
+  };
+
+  // ====== HUD ======
+  function updateHud() {
+    document.getElementById('hudLevel').textContent = state.level + (state.inBoss ? ' BOSS' : '');
+    document.getElementById('hudAge').textContent = state.age + '岁';
+    document.getElementById('hudGems').textContent = state.gems;
+    document.getElementById('hudScore').textContent = state.score;
+    const h = document.getElementById('hudHearts');
+    h.textContent = '❤'.repeat(Math.max(0,state.hp)) + '🖤'.repeat(Math.max(0,3-state.hp));
+    document.getElementById('hudSword').textContent =
+      (['🤚空手','🪵木剑','⚔️石剑','🗡️铁剑','💠钻剑'])[state.sword];
+    document.getElementById('hudPotion').textContent = '🧪 ' + state.potions;
+  }
+
+  // ====== 背包/合成 面板 ======
+  function openCraftPanel() {
+    const bag = document.getElementById('bagList');
+    bag.innerHTML = '';
+    Object.keys(MATERIAL_NAMES).forEach(m => {
+      const cell = document.createElement('div');
+      cell.className = 'bag-cell';
+      cell.textContent = MATERIAL_EMOJI[m] + ' ' + MATERIAL_NAMES[m] + ': ' + (state.inventory[m]||0);
+      bag.appendChild(cell);
+    });
+    document.getElementById('curSword').textContent = SWORD_EFFECT[state.sword].label;
+    document.getElementById('curPot').textContent = state.potions;
+
+    const list = document.getElementById('recipeList');
+    list.innerHTML = '';
+    RECIPES.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'recipe-row';
+      const have = (r.give.type === 'sword' && state.sword >= r.give.level);
+      if (have) row.classList.add('have');
+      const needText = Object.entries(r.need).map(([k,v]) =>
+        MATERIAL_EMOJI[k] + v + '(有' + (state.inventory[k]||0) + ')'
+      ).join(' + ');
+      row.innerHTML = `
+        <div class="rname">${r.icon} ${r.name}</div>
+        <div class="rneed">${needText}</div>
+      `;
+      const btn = document.createElement('button');
+      const canCraft = Object.entries(r.need).every(([k,v]) => (state.inventory[k]||0) >= v);
+      if (have) { btn.textContent = '已拥有'; btn.disabled = true; }
+      else if (!canCraft) { btn.textContent = '材料不足'; btn.disabled = true; }
+      else { btn.textContent = '合成'; btn.onclick = () => doCraft(r); }
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    document.getElementById('craftOverlay').style.display = 'flex';
+  }
+
+  function doCraft(r) {
+    Object.entries(r.need).forEach(([k,v]) => state.inventory[k] -= v);
+    if (r.give.type === 'sword') {
+      state.sword = Math.max(state.sword, r.give.level);
+    } else if (r.give.type === 'potion') {
+      state.potions += r.give.count;
+    }
+    sndCorrect();
+    updateHud();
+    openCraftPanel(); // 刷新
+  }
+
+  // ====== 渲染 ======
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    // 背景
+    ctx.fillStyle = '#2a4d2a';
+    ctx.fillRect(0,0,W,H);
+
+    // 地块
+    for (let y=0; y<ROWS; y++) {
+      for (let x=0; x<COLS; x++) {
+        drawTile(x, y, state.map[y][x]);
+      }
+    }
+
+    // 怪物
+    for (const m of state.mobs) {
+      if (m.dead) continue;
+      m.bob += 0.05;
+      const bob = Math.sin(m.bob) * 2;
+      drawMob(m.x*TILE, m.y*TILE + bob, m.type);
+    }
+
+    // Boss
+    if (state.boss) {
+      state.boss.bob += 0.04;
+      const bob = Math.sin(state.boss.bob) * 3;
+      drawBoss(state.boss.x*TILE, state.boss.y*TILE + bob, state.boss.type);
+    }
+
+    // 玩家
+    drawPlayer(state.player.px, state.player.py, state.player.dir);
+  }
+
+  function drawBoss(px, py, type) {
+    // Boss 占 2x2 = 80x80
+    const size = TILE * 2;
+    if (type === 'wither') {
+      // 凋灵: 三个骷髅头
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px+8, py+24, size-16, size-32);
+      // 三头
+      ctx.fillStyle = '#3a3a3a';
+      ctx.fillRect(px+4, py+8, 24, 24);
+      ctx.fillRect(px+28, py+4, 24, 24);
+      ctx.fillRect(px+52, py+8, 24, 24);
+      // 红眼
+      ctx.fillStyle = '#ff3a3a';
+      ctx.fillRect(px+8, py+18, 6, 4); ctx.fillRect(px+18, py+18, 6, 4);
+      ctx.fillRect(px+32, py+14, 6, 4); ctx.fillRect(px+42, py+14, 6, 4);
+      ctx.fillRect(px+56, py+18, 6, 4); ctx.fillRect(px+66, py+18, 6, 4);
+    } else if (type === 'enderdragon') {
+      // 末影龙: 紫黑大头
+      ctx.fillStyle = '#1a0a2a'; ctx.fillRect(px+8, py+8, size-16, size-16);
+      // 嘴
+      ctx.fillStyle = '#0a0a1a'; ctx.fillRect(px+12, py+48, size-24, 16);
+      // 牙
+      ctx.fillStyle = '#fff';
+      for (let i=0; i<4; i++) ctx.fillRect(px+18+i*12, py+50, 3, 6);
+      // 紫眼
+      ctx.fillStyle = '#cc4aff';
+      ctx.fillRect(px+18, py+20, 12, 8);
+      ctx.fillRect(px+50, py+20, 12, 8);
+      // 翅膀
+      ctx.fillStyle = '#2a0a3a';
+      ctx.fillRect(px-8, py+16, 16, 32);
+      ctx.fillRect(px+size-8, py+16, 16, 32);
+    } else if (type === 'guardian') {
+      // 守卫者: 蓝绿方块带刺
+      ctx.fillStyle = '#3a8a8a'; ctx.fillRect(px+12, py+12, size-24, size-24);
+      ctx.fillStyle = '#2a6a6a'; ctx.fillRect(px+16, py+16, size-32, size-32);
+      // 大眼
+      ctx.fillStyle = '#ff6a3a';
+      ctx.fillRect(px+size/2-12, py+size/2-12, 24, 24);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(px+size/2-6, py+size/2-6, 12, 12);
+      // 刺
+      ctx.fillStyle = '#3a8a8a';
+      ctx.fillRect(px+size/2-2, py+2, 4, 10);
+      ctx.fillRect(px+size/2-2, py+size-12, 4, 10);
+      ctx.fillRect(px+2, py+size/2-2, 10, 4);
+      ctx.fillRect(px+size-12, py+size/2-2, 10, 4);
+    }
+  }
+
+  function drawTile(tx, ty, type) {
+    const x = tx*TILE, y = ty*TILE;
+    switch(type) {
+      case T.GRASS:
+        ctx.fillStyle = '#4a8a3a'; ctx.fillRect(x,y,TILE,TILE);
+        // 草纹理
+        ctx.fillStyle = '#5fa84a';
+        for (let i=0;i<5;i++) {
+          const px = x + ((tx*7+i*11) % TILE);
+          const py = y + ((ty*5+i*13) % TILE);
+          ctx.fillRect(px, py, 3, 3);
+        }
+        ctx.fillStyle = '#3a6a2a';
+        ctx.fillRect(x+(tx*3%TILE), y+(ty*7%TILE), 2, 2);
+        break;
+      case T.DIRT:
+        ctx.fillStyle = '#7a4a2a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#5a3a1a';
+        for (let i=0;i<4;i++) {
+          ctx.fillRect(x+((tx+i*5)%TILE), y+((ty+i*7)%TILE), 3, 3);
+        }
+        break;
+      case T.STONE:
+        ctx.fillStyle = '#8a8a8a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#6a6a6a';
+        ctx.fillRect(x+3, y+3, TILE-6, TILE-6);
+        ctx.fillStyle = '#aaa';
+        ctx.fillRect(x+8, y+8, 4, 4);
+        ctx.fillRect(x+24, y+18, 6, 4);
+        break;
+      case T.WATER:
+        ctx.fillStyle = '#3a6acb'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#5f8de0';
+        const t = Date.now()/600;
+        ctx.fillRect(x+2, y+8+Math.sin(t+tx)*1, TILE-4, 2);
+        ctx.fillRect(x+2, y+24+Math.cos(t+ty)*1, TILE-4, 2);
+        break;
+      case T.TREE:
+        // 草地底色
+        ctx.fillStyle = '#4a8a3a'; ctx.fillRect(x,y,TILE,TILE);
+        // 树叶 (顶部 28x28 偏移)
+        ctx.fillStyle = '#2a6a1a';
+        ctx.fillRect(x+4, y+2, TILE-8, 24);
+        ctx.fillStyle = '#3a8a2a';
+        ctx.fillRect(x+6, y+4, TILE-12, 18);
+        ctx.fillStyle = '#5fbf4a';
+        ctx.fillRect(x+10, y+8, 6, 4);
+        // 树干 (底部 8x12)
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fillRect(x+TILE/2-4, y+TILE-12, 8, 12);
+        break;
+      case T.SAND:
+        ctx.fillStyle = '#e8d57a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#d4bf5a';
+        ctx.fillRect(x+5, y+10, 3, 2);
+        ctx.fillRect(x+22, y+25, 3, 2);
+        break;
+      case T.PATH:
+        ctx.fillStyle = '#a89a6a'; ctx.fillRect(x,y,TILE,TILE);
+        break;
+      case T.FLOWER:
+        ctx.fillStyle = '#4a8a3a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#5fa84a';
+        for (let i=0;i<3;i++) ctx.fillRect(x+(tx*7+i*11)%TILE, y+(ty*5+i*13)%TILE, 3, 3);
+        // 花
+        ctx.fillStyle = '#cc3a3a';
+        ctx.fillRect(x+TILE/2-4, y+TILE/2-4, 8, 8);
+        ctx.fillStyle = '#ffd54a';
+        ctx.fillRect(x+TILE/2-2, y+TILE/2-2, 4, 4);
+        ctx.fillStyle = '#2a5a1a';
+        ctx.fillRect(x+TILE/2-1, y+TILE/2+4, 2, 6);
+        break;
+      case T.PORTAL:
+        // 紫色脉动 (末地传送门感)
+        ctx.fillStyle = '#2a1a3a'; ctx.fillRect(x,y,TILE,TILE);
+        const pulse = (Math.sin(Date.now()/200)+1)/2;
+        ctx.fillStyle = `rgb(${120+pulse*80},${60+pulse*60},${200})`;
+        ctx.fillRect(x+4, y+4, TILE-8, TILE-8);
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = 0.4 + pulse*0.4;
+        ctx.fillRect(x+12, y+12, 4, 4);
+        ctx.fillRect(x+24, y+8, 3, 3);
+        ctx.fillRect(x+8, y+28, 3, 3);
+        ctx.fillRect(x+28, y+24, 4, 4);
+        ctx.globalAlpha = 1;
+        break;
+      case T.COAL:
+      case T.IRON:
+      case T.GOLD:
+      case T.DIAMOND:
+      case T.EMERALD: {
+        // 石头底色
+        ctx.fillStyle = '#8a8a8a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#6a6a6a';
+        ctx.fillRect(x+3, y+3, TILE-6, TILE-6);
+        // 矿石颗粒
+        const oreColor = MINEABLE[type].color;
+        ctx.fillStyle = oreColor;
+        const positions = [[6,8],[24,10],[10,22],[26,26],[16,16]];
+        positions.forEach(([dx,dy]) => ctx.fillRect(x+dx, y+dy, 5, 5));
+        // 闪光高光
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(x+7, y+9, 2, 2);
+        ctx.fillRect(x+25, y+11, 2, 2);
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case T.BOSS_FLOOR: {
+        // 黑曜石风格平台
+        ctx.fillStyle = '#1a1a2a'; ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle = '#2a1a3a';
+        ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
+        ctx.fillStyle = '#5a3a7a';
+        if ((tx+ty) % 2 === 0) ctx.fillRect(x+14, y+14, 4, 4);
+        break;
+      }
+    }
+  }
+
+  // === 玩家 (Steve) ===
+  function drawPlayer(px, py, dir) {
+    const s = 4; // pixel scale  (8x8 char) -> 32px
+    const x = px + (TILE - s*8)/2;
+    const y = py + (TILE - s*10)/2;
+    // 头
+    ctx.fillStyle = '#f5cba7'; ctx.fillRect(x, y, s*8, s*4);
+    // 头发
+    ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x, y, s*8, s*1);
+    ctx.fillRect(x, y+s, s*1, s*2);
+    ctx.fillRect(x+s*7, y+s, s*1, s*2);
+    // 眼睛 (根据方向)
+    ctx.fillStyle = '#fff';
+    if (dir === 'left') { ctx.fillRect(x+s*1, y+s*2, s, s); }
+    else if (dir === 'right') { ctx.fillRect(x+s*6, y+s*2, s, s); }
+    else {
+      ctx.fillRect(x+s*2, y+s*2, s, s);
+      ctx.fillRect(x+s*5, y+s*2, s, s);
+    }
+    ctx.fillStyle = '#222';
+    if (dir === 'left') { ctx.fillRect(x+s*1, y+s*2, s/2, s); }
+    else if (dir === 'right') { ctx.fillRect(x+s*6+s/2, y+s*2, s/2, s); }
+    else {
+      ctx.fillRect(x+s*2+s/4, y+s*2+s/4, s/2, s/2);
+      ctx.fillRect(x+s*5+s/4, y+s*2+s/4, s/2, s/2);
+    }
+    // 嘴
+    ctx.fillStyle = '#aa6a4a';
+    ctx.fillRect(x+s*3, y+s*3+s/2, s*2, s/2);
+    // 身体 (青色衣服)
+    ctx.fillStyle = '#3aa3c4'; ctx.fillRect(x, y+s*4, s*8, s*3);
+    ctx.fillStyle = '#2a8aa8'; ctx.fillRect(x, y+s*4, s*1, s*3);
+    // 腿
+    ctx.fillStyle = '#3a3aaa';
+    // 走路动画
+    const walking = state.player.moving;
+    const phase = walking ? Math.floor(Date.now()/120)%2 : 0;
+    if (phase === 0) {
+      ctx.fillRect(x+s, y+s*7, s*3, s*3);
+      ctx.fillRect(x+s*4, y+s*7, s*3, s*3);
+    } else {
+      ctx.fillRect(x, y+s*7, s*3, s*3);
+      ctx.fillRect(x+s*5, y+s*7, s*3, s*3);
+    }
+  }
+
+  // === 怪物 ===
+  function drawMob(px, py, type, scale=1, g=ctx) {
+    const ctx = g;  // 局部遮蔽，让下面所有 ctx 调用都指向 g
+    const m = MOBS[type];
+    const s = 4 * scale;
+    const x = px + (TILE*scale - s*8)/2;
+    const y = py + (TILE*scale - s*10)/2;
+    if (type === 'zombie') {
+      // 头
+      ctx.fillStyle = '#5fbf5f'; ctx.fillRect(x, y, s*8, s*4);
+      ctx.fillStyle = '#3a8a3a'; ctx.fillRect(x, y, s*8, s); // 头顶阴影
+      // 眼
+      ctx.fillStyle = '#000'; ctx.fillRect(x+s*2, y+s*2, s, s); ctx.fillRect(x+s*5, y+s*2, s, s);
+      // 嘴
+      ctx.fillStyle = '#1a3a1a'; ctx.fillRect(x+s*3, y+s*3+s/2, s*2, s/2);
+      // 身体
+      ctx.fillStyle = '#3a4a8a'; ctx.fillRect(x, y+s*4, s*8, s*3);
+      // 手前伸 (僵尸特征)
+      ctx.fillStyle = '#5fbf5f';
+      ctx.fillRect(x-s, y+s*4, s, s*3);
+      ctx.fillRect(x+s*8, y+s*4, s, s*3);
+      // 腿
+      ctx.fillStyle = '#2a3a6a';
+      ctx.fillRect(x+s, y+s*7, s*3, s*3);
+      ctx.fillRect(x+s*4, y+s*7, s*3, s*3);
+    } else if (type === 'skeleton') {
+      ctx.fillStyle = '#e0e0e0'; ctx.fillRect(x, y, s*8, s*4);
+      ctx.fillStyle = '#000'; ctx.fillRect(x+s*2, y+s*2, s, s); ctx.fillRect(x+s*5, y+s*2, s, s);
+      ctx.fillRect(x+s*3, y+s*3+s/2, s*2, s/2);
+      ctx.fillStyle = '#bbb'; ctx.fillRect(x, y+s*4, s*8, s*3);
+      // 弓 (右手)
+      ctx.fillStyle = '#5a3a1a';
+      ctx.fillRect(x+s*8, y+s*4, s, s*3);
+      ctx.fillStyle = '#aaa';
+      ctx.fillRect(x+s, y+s*7, s*3, s*3);
+      ctx.fillRect(x+s*4, y+s*7, s*3, s*3);
+    } else if (type === 'creeper') {
+      ctx.fillStyle = '#6cbf3f'; ctx.fillRect(x, y, s*8, s*4);
+      // 苦力怕脸
+      ctx.fillStyle = '#000';
+      ctx.fillRect(x+s*1, y+s*1, s*2, s*2);
+      ctx.fillRect(x+s*5, y+s*1, s*2, s*2);
+      ctx.fillRect(x+s*3, y+s*3, s*2, s);
+      ctx.fillRect(x+s*2, y+s*3+s, s, s);
+      ctx.fillRect(x+s*5, y+s*3+s, s, s);
+      // 身体 (4腿站立)
+      ctx.fillStyle = '#5cae35'; ctx.fillRect(x, y+s*4, s*8, s*4);
+      ctx.fillStyle = '#4a9c25';
+      ctx.fillRect(x, y+s*8, s*3, s*2);
+      ctx.fillRect(x+s*5, y+s*8, s*3, s*2);
+    } else if (type === 'spider') {
+      ctx.fillStyle = '#3a1a1a'; ctx.fillRect(x+s, y+s*2, s*6, s*5);
+      // 红眼
+      ctx.fillStyle = '#ff3a3a';
+      ctx.fillRect(x+s*2, y+s*3, s, s);
+      ctx.fillRect(x+s*5, y+s*3, s, s);
+      // 8条腿
+      ctx.fillStyle = '#1a0a0a';
+      ctx.fillRect(x-s, y+s*3, s, s);
+      ctx.fillRect(x-s, y+s*5, s, s);
+      ctx.fillRect(x+s*8, y+s*3, s, s);
+      ctx.fillRect(x+s*8, y+s*5, s, s);
+      ctx.fillRect(x, y+s*8, s*2, s);
+      ctx.fillRect(x+s*6, y+s*8, s*2, s);
+    } else if (type === 'slime') {
+      // 半透明绿块
+      ctx.fillStyle = '#7fce5f'; ctx.fillRect(x, y+s*3, s*8, s*6);
+      ctx.fillStyle = '#a8e683'; ctx.fillRect(x+s, y+s*4, s*6, s*4);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(x+s*2, y+s*5, s, s);
+      ctx.fillRect(x+s*5, y+s*5, s, s);
+      ctx.fillRect(x+s*3, y+s*7, s*2, s/2);
+    } else if (type === 'enderman') {
+      // 高瘦
+      ctx.fillStyle = '#0a0a0a'; ctx.fillRect(x+s*2, y, s*4, s*10);
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(x+s, y+s*4, s, s*4);
+      ctx.fillRect(x+s*6, y+s*4, s, s*4);
+      // 紫色眼睛
+      ctx.fillStyle = '#cc4aff';
+      ctx.fillRect(x+s*3, y+s*2, s, s);
+      ctx.fillRect(x+s*4, y+s*2, s, s);
+    }
+  }
+
+  // 在战斗模态中绘制怪物 (48x48 mini canvas)
+  function drawBattleMob(type) {
+    const c = document.getElementById('battleMobCanvas');
+    const cx = c.getContext('2d');
+    cx.imageSmoothingEnabled = false;
+    cx.clearRect(0,0,48,48);
+    // 把 (0,0,TILE,TILE) 居中到 48x48
+    cx.save();
+    cx.translate(4, 4);
+    drawMob(0, 0, type, 1, cx);
+    cx.restore();
+  }
+
+  // ====== 移动 ======
+  function tryMove(dir) {
+    if (state.inBattle || state.inMining) return;
+    if (state.player.moving) { state.pendingDir = dir; return; }
+    state.player.dir = dir;
+    let nx = state.player.tx, ny = state.player.ty;
+    if (dir === 'up') ny--;
+    else if (dir === 'down') ny++;
+    else if (dir === 'left') nx--;
+    else if (dir === 'right') nx++;
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return;
+    const tileType = state.map[ny][nx];
+    // Boss 碰撞 (Boss 占 2x2)
+    if (state.inBoss && state.boss) {
+      const b = state.boss;
+      if (nx >= b.x && nx <= b.x+1 && ny >= b.y && ny <= b.y+1) {
+        startBossBattle();
+        return;
+      }
+    }
+    // 检查是否有活着的怪物
+    const mob = state.mobs.find(m => !m.dead && m.x === nx && m.y === ny);
+    if (mob) {
+      startBattle(mob);
+      return;
+    }
+    // 可挖掘 tile
+    if (MINEABLE[tileType]) {
+      const ore = MINEABLE[tileType];
+      if (state.sword < ore.need) {
+        flashMessage('需要更好的剑/工具 (剑等级 ' + ore.need + '+)');
+        return;
+      }
+      startMining(nx, ny, tileType);
+      return;
+    }
+    if (!PASSABLE.has(tileType)) return;
+    state.player.tx = nx; state.player.ty = ny;
+    state.player.moving = true;
+    sndStep();
+  }
+
+  function updateMovement() {
+    const p = state.player;
+    if (!p.moving) {
+      // 检查 pendingDir
+      if (state.pendingDir) {
+        const d = state.pendingDir; state.pendingDir = null;
+        tryMove(d);
+      }
+      return;
+    }
+    const targetX = p.tx * TILE;
+    const targetY = p.ty * TILE;
+    const speed = 4; // px/frame
+    if (p.px < targetX) p.px = Math.min(p.px + speed, targetX);
+    else if (p.px > targetX) p.px = Math.max(p.px - speed, targetX);
+    if (p.py < targetY) p.py = Math.min(p.py + speed, targetY);
+    else if (p.py > targetY) p.py = Math.max(p.py - speed, targetY);
+    if (p.px === targetX && p.py === targetY) {
+      p.moving = false;
+      // 检查是否踩到传送门
+      if (p.tx === state.portal.x && p.ty === state.portal.y) {
+        // 必须打败所有怪物才能进
+        const alive = state.mobs.filter(m => !m.dead).length;
+        if (alive === 0) {
+          sndPortal();
+          showWin();
+        } else {
+          // 提示还有怪物
+          flashMessage('还有 ' + alive + ' 只怪物没打败！');
+        }
+      }
+    }
+  }
+
+  let flashMsg = null;
+  function flashMessage(msg) {
+    flashMsg = { text: msg, until: Date.now() + 1500 };
+  }
+
+  function drawFlash() {
+    if (!flashMsg) return;
+    if (Date.now() > flashMsg.until) { flashMsg = null; return; }
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    const text = flashMsg.text;
+    ctx.font = 'bold 18px PingFang SC, monospace';
+    const tw = ctx.measureText(text).width;
+    ctx.fillRect(W/2 - tw/2 - 12, H/2 - 18, tw + 24, 36);
+    ctx.fillStyle = '#ffd54a';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, W/2, H/2);
+    ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+  }
+
+  // ====== 题目生成 ======
+  function rint(a, b) { return a + Math.floor(Math.random()*(b-a+1)); }
+  function shuffle(arr) {
+    for (let i = arr.length-1; i>0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function emojiOf(item) {
+    return ({apple:'🍎', gem:'💎', pig:'🐷', sheep:'🐑', fish:'🐟', star:'⭐', cookie:'🍪', heart:'❤️'})[item] || '🟦';
+  }
+
+  function makeOptions(correct, near=5, range=20) {
+    const set = new Set([correct]);
+    let tries = 0;
+    while (set.size < 4 && tries < 200) {
+      tries++;
+      const d = rint(-near, near);
+      let v = correct + d;
+      if (v < 0) v = Math.abs(v);
+      if (v > range) v = range - (v - range);
+      if (v < 0 || v > range || v === correct) continue;
+      set.add(v);
+    }
+    // 保底：如果还没凑齐就在 [0, range] 里随便补
+    let probe = 0;
+    while (set.size < 4 && probe <= range) {
+      if (!set.has(probe)) set.add(probe);
+      probe++;
+    }
+    return shuffle([...set]).map(String);
+  }
+
+  function generateQuestion(opts = {}) {
+    let age = state.age;
+    if (opts.easierBy) age = Math.max(5, age - opts.easierBy);
+    if (opts.harderBy) age = Math.min(8, age + opts.harderBy);
+    const lvl = state.level;
+    const pickFrom = (arr) => arr[Math.floor(Math.random()*arr.length)];
+    let q;
+    if (age === 5) {
+      const types = ['count','compare','add10','sub10'];
+      const t = pickFrom(types);
+      if (t === 'count') {
+        const item = pickFrom(['apple','gem','pig','sheep','fish','cookie']);
+        const n = rint(2, Math.min(10, 4 + lvl));
+        const visual = emojiOf(item).repeat(n);
+        q = { text:'数一数有几个?', visual, answer:n, range:10, near:3 };
+      } else if (t === 'compare') {
+        let a = rint(1, 10), b = rint(1, 10);
+        while (a === b) b = rint(1, 10);
+        const big = Math.max(a,b), small = Math.min(a,b);
+        const opts = new Set([String(a), String(b), String(big+1)]);
+        let probe = small - 1;
+        while (opts.size < 4) {
+          if (probe >= 0) opts.add(String(probe));
+          probe = (probe > 0) ? probe - 1 : big + 2 + (opts.size);
+        }
+        q = {
+          text: `${a} 和 ${b} 哪个大?`,
+          visual: '',
+          options: shuffle([...opts]).slice(0,4),
+          correctStr: String(big)
+        };
+      } else if (t === 'add10') {
+        const a = rint(1, 5), b = rint(1, Math.min(5, 10-a));
+        q = { text:`${a} + ${b} = ?`, visual: emojiOf('apple').repeat(a) + ' + ' + emojiOf('apple').repeat(b), answer:a+b, range:10, near:3 };
+      } else { // sub10
+        const a = rint(2, 10), b = rint(1, a);
+        q = { text:`${a} - ${b} = ?`, visual:'', answer:a-b, range:10, near:3 };
+      }
+    } else if (age === 6) {
+      const types = ['add20','sub20','compare','shape','add10pic'];
+      const t = pickFrom(types);
+      if (t === 'add20') {
+        const a = rint(1, 15), b = rint(1, 20-a);
+        q = { text:`${a} + ${b} = ?`, visual:'', answer:a+b, range:20, near:4 };
+      } else if (t === 'sub20') {
+        const a = rint(5, 20), b = rint(1, a-1);
+        q = { text:`${a} - ${b} = ?`, visual:'', answer:a-b, range:20, near:4 };
+      } else if (t === 'compare') {
+        const a = rint(5, 30), b = rint(5, 30);
+        const symbol = a > b ? '>' : (a < b ? '<' : '=');
+        q = {
+          text: `${a} ⊡ ${b}`,
+          visual: '请选择正确的符号',
+          options: shuffle(['>', '<', '=', '?']),
+          correctStr: symbol
+        };
+      } else if (t === 'shape') {
+        const shapes = [
+          { name:'三角形', sides:3 },
+          { name:'正方形', sides:4 },
+          { name:'五边形', sides:5 },
+          { name:'六边形', sides:6 },
+        ];
+        const s = pickFrom(shapes);
+        q = { text:`${s.name} 有几条边?`, visual:'', answer:s.sides, range:8, near:2 };
+      } else { // add10pic
+        const a = rint(2, 8), b = rint(2, 8);
+        q = { text:'一共有几个?', visual: emojiOf('gem').repeat(a) + ' + ' + emojiOf('gem').repeat(b), answer:a+b, range:20, near:3 };
+      }
+    } else if (age === 7) {
+      const types = ['add100','sub100','mul_small','compare100','mixed7'];
+      const t = pickFrom(types);
+      if (t === 'add100') {
+        const a = rint(10, 60), b = rint(10, Math.min(40, 99-a));
+        q = { text:`${a} + ${b} = ?`, visual:'', answer:a+b, range:100, near:8 };
+      } else if (t === 'sub100') {
+        const a = rint(20, 99), b = rint(5, a-1);
+        q = { text:`${a} - ${b} = ?`, visual:'', answer:a-b, range:100, near:6 };
+      } else if (t === 'mul_small') {
+        const tables = [2, 5, 10];
+        const a = pickFrom(tables), b = rint(1, 9);
+        q = { text:`${a} × ${b} = ?`, visual:'', answer:a*b, range:100, near:5 };
+      } else if (t === 'compare100') {
+        const a = rint(20, 99), b = rint(20, 99);
+        const symbol = a > b ? '>' : (a < b ? '<' : '=');
+        q = {
+          text:`${a} ⊡ ${b}`,
+          visual:'请选择正确的符号',
+          options: shuffle(['>','<','=','?']),
+          correctStr: symbol
+        };
+      } else { // mixed7
+        const a = rint(1, 9), b = rint(1, 9), c = rint(1, 9);
+        const ans = a + b - c;
+        if (ans < 0) { q = { text:`${a} + ${b} = ?`, visual:'', answer:a+b, range:20, near:3 }; }
+        else q = { text:`${a} + ${b} - ${c} = ?`, visual:'', answer:ans, range:20, near:3 };
+      }
+    } else { // 8岁
+      const types = ['mul','div','mixed8','add100'];
+      const t = pickFrom(types);
+      if (t === 'mul') {
+        const a = rint(2, 9), b = rint(2, 9);
+        q = { text:`${a} × ${b} = ?`, visual:'', answer:a*b, range:90, near:6 };
+      } else if (t === 'div') {
+        const b = rint(2, 9), c = rint(1, 9), a = b*c;
+        q = { text:`${a} ÷ ${b} = ?`, visual:'', answer:c, range:12, near:3 };
+      } else if (t === 'mixed8') {
+        const a = rint(2, 9), b = rint(2, 9), c = rint(1, 9);
+        const ans = a*b + c;
+        q = { text:`${a} × ${b} + ${c} = ?`, visual:'', answer:ans, range:100, near:6 };
+      } else {
+        const a = rint(20, 80), b = rint(10, 99-a);
+        q = { text:`${a} + ${b} = ?`, visual:'', answer:a+b, range:100, near:6 };
+      }
+    }
+
+    // 生成选项
+    if (!q.options) {
+      q.options = makeOptions(q.answer, q.near, q.range);
+      q.correctStr = String(q.answer);
+    }
+    return q;
+  }
+
+  // ====== 战斗 / 挖矿 / Boss 统一通过 battleOverlay ======
+  function openBattleOverlay() {
+    document.getElementById('battleOverlay').style.display = 'flex';
+  }
+  function closeBattleOverlay() {
+    document.getElementById('battleOverlay').style.display = 'none';
+  }
+
+  // 普通怪物战
+  function startBattle(mob) {
+    state.inBattle = true;
+    state.activeMob = mob;
+    state.questionWrongTries = 0;
+    openBattleOverlay();
+    document.getElementById('mobName').textContent = MOBS[mob.type].name + ' 拦住了你！';
+    drawBattleMob(mob.type);
+    showQuestion();
+  }
+
+  // 挖矿
+  function startMining(x, y, type) {
+    state.inMining = true;
+    state.activeMineTile = { x, y, type };
+    state.questionWrongTries = 0;
+    openBattleOverlay();
+    const ore = MINEABLE[type];
+    document.getElementById('mobName').textContent = '挖掘 ' + ore.name + ' (徒手)';
+    drawOreIcon(type);
+    showQuestion({ easierBy: 1 });
+  }
+
+  // Boss 战
+  function startBossBattle() {
+    state.inBattle = true;
+    state.activeMob = null;
+    state.questionWrongTries = 0;
+    openBattleOverlay();
+    const bn = BOSS_NAMES[state.boss.type];
+    document.getElementById('mobName').textContent = bn + ' (HP: ' + state.boss.hp + '/' + state.boss.maxHp + ')';
+    drawBattleMob(state.boss.type === 'enderdragon' ? 'enderman' :
+                  state.boss.type === 'wither' ? 'skeleton' : 'creeper');
+    showQuestion({ harderBy: 1 });
+  }
+
+  function drawOreIcon(type) {
+    const c = document.getElementById('battleMobCanvas');
+    const cx = c.getContext('2d');
+    cx.imageSmoothingEnabled = false;
+    cx.clearRect(0,0,48,48);
+    // 石头底
+    cx.fillStyle = '#8a8a8a'; cx.fillRect(0,0,48,48);
+    cx.fillStyle = '#6a6a6a'; cx.fillRect(4,4,40,40);
+    const ore = MINEABLE[type];
+    cx.fillStyle = ore.color;
+    [[8,10],[28,12],[12,28],[30,30],[20,20]].forEach(([dx,dy]) => cx.fillRect(dx, dy, 6, 6));
+  }
+
+  function showQuestion(opts = {}) {
+    const q = generateQuestion(opts);
+    state.currentQuestion = q;
+    document.getElementById('qText').innerHTML = q.text;
+    const visualEl = document.getElementById('qVisual');
+    if (q.visual && q.visual.length > 0) {
+      visualEl.classList.remove('empty');
+      visualEl.textContent = q.visual;
+    } else {
+      visualEl.classList.add('empty');
+    }
+    document.getElementById('qFeedback').innerHTML = '&nbsp;';
+    const optsEl = document.getElementById('qOptions');
+    optsEl.innerHTML = '';
+    q.options.forEach(opt => {
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.textContent = opt;
+      b.onclick = () => answerClicked(opt, b);
+      optsEl.appendChild(b);
+    });
+  }
+
+  function answerClicked(opt, btn) {
+    const q = state.currentQuestion;
+    const fb = document.getElementById('qFeedback');
+    if (opt === q.correctStr) {
+      btn.classList.add('correct');
+      fb.className = 'feedback good';
+      const praises = ['太棒了！🎉', '答对了！⭐', '真厉害！💎', '完美！🏆', '聪明的玩家！✨'];
+      fb.textContent = praises[Math.floor(Math.random()*praises.length)];
+      sndCorrect();
+      if (state.inMining) {
+        // 挖矿成功: 得材料, 把方块清空
+        const mt = state.activeMineTile;
+        const mat = MINEABLE[mt.type].material;
+        const amount = 1 + (mt.type === T.COAL || mt.type === T.IRON ? Math.floor(Math.random()*2) : 0);
+        state.inventory[mat] = (state.inventory[mat] || 0) + amount;
+        state.map[mt.y][mt.x] = T.DIRT;
+        state.score += 5;
+        updateHud();
+        setTimeout(() => {
+          closeBattleOverlay();
+          state.inMining = false;
+          state.activeMineTile = null;
+          flashMessage('+' + amount + ' ' + MATERIAL_NAMES[mat] + ' ' + MATERIAL_EMOJI[mat]);
+          sndGem();
+        }, 900);
+      } else if (state.inBoss && state.boss) {
+        // Boss 战: 扣 Boss HP, 继续下一题
+        state.boss.hp--;
+        if (state.boss.hp <= 0) {
+          // 击败 Boss
+          state.gems += 50;
+          state.score += 200;
+          // 额外奖励材料
+          state.inventory.diamond += 3;
+          state.inventory.emerald += 1;
+          updateHud();
+          setTimeout(() => {
+            closeBattleOverlay();
+            state.inBattle = false;
+            sndPortal();
+            showWin();
+          }, 900);
+        } else {
+          // 还有 HP, 出下一题
+          setTimeout(() => {
+            document.getElementById('mobName').textContent =
+              BOSS_NAMES[state.boss.type] + ' (HP: ' + state.boss.hp + '/' + state.boss.maxHp + ')';
+            state.questionWrongTries = 0;
+            showQuestion({ harderBy: 1 });
+          }, 900);
+        }
+      } else {
+        // 普通战斗胜利
+        const mob = state.activeMob;
+        mob.dead = true;
+        const eff = SWORD_EFFECT[state.sword];
+        const gemGain = 1 + eff.gemBonus + Math.floor(Math.random()*2);
+        const scoreGain = 10 + state.level * 5 - state.questionWrongTries * 3;
+        state.gems += gemGain;
+        state.score += Math.max(5, scoreGain);
+        updateHud();
+        setTimeout(() => {
+          closeBattleOverlay();
+          state.inBattle = false;
+          sndGem();
+        }, 900);
+      }
+    } else {
+      btn.classList.add('wrong');
+      btn.disabled = true;
+      fb.className = 'feedback bad';
+      fb.textContent = '再想想看！💪';
+      sndWrong();
+      state.questionWrongTries++;
+      const maxTries = state.inMining ? 2 : (state.inBoss ? 2 : SWORD_EFFECT[state.sword].retries);
+      if (state.questionWrongTries >= maxTries) {
+        if (state.inMining) {
+          // 挖矿失败: 不扣血,关闭模态,方块保留
+          fb.textContent = '挖矿失败！正确答案是 ' + q.correctStr;
+          setTimeout(() => {
+            closeBattleOverlay();
+            state.inMining = false;
+            state.activeMineTile = null;
+          }, 1400);
+        } else {
+          // 战斗失败: 扣血,尝试自动用药水
+          let usedPotion = false;
+          if (state.potions > 0 && state.hp <= 1) {
+            state.potions--;
+            state.hp = Math.min(3, state.hp + 1);
+            usedPotion = true;
+          } else {
+            state.hp--;
+          }
+          updateHud();
+          fb.textContent = '正确答案是 ' + q.correctStr + (usedPotion ? '。 自动使用治疗药水 🧪 +1❤' : '。 ❤ -1');
+          setTimeout(() => {
+            closeBattleOverlay();
+            state.inBattle = false;
+            state.activeMob = null;
+            if (state.hp <= 0) showLose();
+            else if (state.inBoss && state.boss) {
+              // Boss 战中扣血后继续 (不重置 Boss HP)
+              setTimeout(() => { startBossBattle(); }, 300);
+            }
+          }, 1500);
+        }
+      }
+    }
+  }
+
+  // ====== 通关/失败 ======
+  function showWin() {
+    document.getElementById('winScore').textContent = state.score;
+    const winText = document.getElementById('winText');
+    if (state.inBoss) {
+      winText.innerHTML =
+        '🏆 你打败了 <b>' + BOSS_NAMES[state.boss.type] + '</b>！<br>' +
+        '获得 50 💎 + 200 ⭐ + 钻石×3 + 绿宝石×1';
+    } else {
+      winText.textContent = '你打败了所有怪物，找到了传送门！';
+    }
+    const overlay = document.getElementById('winOverlay');
+    overlay.style.display = 'flex';
+  }
+
+  function showLose() {
+    document.getElementById('loseScore').textContent = state.score;
+    document.getElementById('loseOverlay').style.display = 'flex';
+  }
+
+  // ====== 输入 ======
+  const keyMap = {
+    ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+    w:'up', s:'down', a:'left', d:'right',
+    W:'up', S:'down', A:'left', D:'right'
+  };
+  window.addEventListener('keydown', e => {
+    if (state.inBattle) {
+      // 战斗中支持 1-4 选数字
+      const idx = '1234'.indexOf(e.key);
+      if (idx >= 0) {
+        const btns = document.querySelectorAll('#qOptions .opt');
+        if (btns[idx] && !btns[idx].disabled) btns[idx].click();
+        e.preventDefault();
+      }
+      return;
+    }
+    if (keyMap[e.key]) {
+      tryMove(keyMap[e.key]);
+      e.preventDefault();
+    }
+  });
+
+  // 触屏方向键
+  document.querySelectorAll('#pad button[data-dir]').forEach(b => {
+    const fire = (e) => { e.preventDefault(); tryMove(b.dataset.dir); };
+    b.addEventListener('touchstart', fire, {passive:false});
+    b.addEventListener('mousedown', fire);
+  });
+
+  // 滑动手势
+  let touchStart = null;
+  canvas.addEventListener('touchstart', e => {
+    const t = e.touches[0]; touchStart = { x:t.clientX, y:t.clientY };
+  }, {passive:true});
+  canvas.addEventListener('touchend', e => {
+    if (!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+    touchStart = null;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) tryMove(dx > 0 ? 'right' : 'left');
+    else tryMove(dy > 0 ? 'down' : 'up');
+  }, {passive:true});
+
+  // ====== 菜单按钮 ======
+  let selectedAge = 5;
+  document.querySelectorAll('#ageGrid .age-card').forEach(c => {
+    c.addEventListener('click', () => {
+      document.querySelectorAll('#ageGrid .age-card').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      selectedAge = parseInt(c.dataset.age, 10);
+    });
+  });
+  document.querySelector('#ageGrid .age-card[data-age="5"]').classList.add('active');
+
+  function resetProgress() {
+    state.level = 1;
+    state.score = 0;
+    state.gems = 0;
+    state.hp = 3;
+    state.sword = 0;
+    state.potions = 0;
+    state.inventory = { wood:0, stone:0, coal:0, iron:0, gold:0, diamond:0, emerald:0 };
+  }
+  document.getElementById('btnStart').onclick = () => {
+    state.age = selectedAge;
+    resetProgress();
+    document.getElementById('menuOverlay').style.display = 'none';
+    buildLevel();
+  };
+
+  document.getElementById('btnNext').onclick = () => {
+    state.level++;
+    state.hp = Math.min(3, state.hp + 1); // 通关回血
+    document.getElementById('winOverlay').style.display = 'none';
+    buildLevel();
+  };
+  document.getElementById('btnReplay').onclick = () => {
+    document.getElementById('winOverlay').style.display = 'none';
+    buildLevel();
+  };
+  document.getElementById('btnRetry').onclick = () => {
+    resetProgress();
+    document.getElementById('loseOverlay').style.display = 'none';
+    buildLevel();
+  };
+  document.getElementById('btnBackMenu').onclick = () => {
+    document.getElementById('loseOverlay').style.display = 'none';
+    document.getElementById('menuOverlay').style.display = 'flex';
+  };
+  document.getElementById('btnMenu').onclick = () => {
+    document.getElementById('menuOverlay').style.display = 'flex';
+  };
+  document.getElementById('btnCraft').onclick = () => openCraftPanel();
+  document.getElementById('btnCloseCraft').onclick = () => {
+    document.getElementById('craftOverlay').style.display = 'none';
+  };
+
+  // ====== 主循环 ======
+  function loop() {
+    updateMovement();
+    draw();
+    drawFlash();
+    requestAnimationFrame(loop);
+  }
+
+  fitCanvas();
+  // 显示一张"等待开始"的草地预览
+  state.map = genMap(1);
+  state.mobs = []; state.portal = {x:-1,y:-1};
+  state.player.tx = Math.floor(COLS/2); state.player.ty = Math.floor(ROWS/2);
+  state.player.px = state.player.tx*TILE; state.player.py = state.player.ty*TILE;
+  loop();
+})();
+</script>
+</body>
+</html>
