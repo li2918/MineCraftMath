@@ -10,9 +10,15 @@
     width: 100%; height: 100%; background: #1b1b2e; color: #fff;
     font-family: "Minecraft", "PingFang SC", "Microsoft YaHei", monospace, sans-serif;
     overflow: hidden; user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    position: fixed;
+    inset: 0;
   }
   #game {
-    position: relative; width: 100%; height: 100%;
+    position: relative; width: 100%; height: 100vh; height: 100dvh;
     display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     background:
       radial-gradient(ellipse at top, #4a6fa5 0%, #1b1b2e 70%);
@@ -53,24 +59,43 @@
     touch-action: none;
   }
 
-  /* On-screen controls for touch */
+  /* On-screen controls for touch — 默认隐藏 (鼠标设备) */
   #pad, #actBtns {
-    position: fixed; bottom: 16px; display: flex; gap: 8px;
-    opacity: 0.9; z-index: 50;
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    display: none; gap: 10px;
+    z-index: 50;
+    touch-action: none;
   }
-  #pad  { left: 16px; }
-  #actBtns { right: 16px; }
+  #pad  { left: max(16px, env(safe-area-inset-left)); }
+  #actBtns { right: max(16px, env(safe-area-inset-right)); }
   #pad button, #actBtns button {
-    width: 64px; height: 64px;
-    background: rgba(80,80,120,0.85); color: #fff; border: 2px solid #000;
-    border-radius: 10px; font-size: 18px; font-weight: bold;
-    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.4);
+    width: 72px; height: 72px;
+    background: rgba(80,80,120,0.82); color: #fff; border: 2px solid #000;
+    border-radius: 14px; font-size: 18px; font-weight: bold;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.4), 0 2px 0 rgba(0,0,0,0.5);
     cursor: pointer;
     user-select: none;
+    -webkit-user-select: none;
   }
-  #pad button:active, #actBtns button:active { background: #6cd6ff; }
-  @media (hover:hover) and (pointer:fine) {
-    #pad, #actBtns { display: none; }
+  #pad button:active, #actBtns button:active {
+    background: #6cd6ff; transform: translateY(2px);
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.4);
+  }
+  /* 触屏设备显示控制按钮 */
+  @media (pointer: coarse), (hover: none) {
+    #pad, #actBtns { display: flex; }
+  }
+  /* 小屏: 按钮缩小, 间距更近 */
+  @media (max-width: 480px) {
+    #pad button, #actBtns button { width: 58px; height: 58px; font-size: 14px; border-radius: 10px; }
+    #pad, #actBtns { gap: 6px; bottom: max(8px, env(safe-area-inset-bottom)); }
+    #pad { left: max(8px, env(safe-area-inset-left)); }
+    #actBtns { right: max(8px, env(safe-area-inset-right)); }
+  }
+  /* 横屏低高度: 按钮再紧凑些 */
+  @media (max-height: 480px) and (orientation: landscape) {
+    #pad button, #actBtns button { width: 56px; height: 56px; font-size: 13px; }
   }
 
   /* Overlay screens (menu, battle, level-complete) */
@@ -155,6 +180,7 @@
   .age-card .small { font-size: 12px; opacity: 0.95; }
 
   .credit { position: fixed; bottom: 6px; right: 10px; font-size: 10px; opacity: 0.4; }
+  @media (max-width: 720px) { .credit { display: none; } }
 
   /* 背包/合成 */
   .bag-cell {
@@ -178,11 +204,36 @@
   .recipe-row button:disabled { background: #888; color: #ccc; cursor: not-allowed; }
   .recipe-row.have { opacity: 0.5; }
 
+  /* 移动端布局优化 */
+  @media (max-width: 720px) {
+    #hud { font-size: 11px; padding: 6px 6px; gap: 4px; }
+    #hud .badge { padding: 2px 6px; font-size: 11px; }
+    #hud button.tiny { padding: 3px 6px; font-size: 11px; }
+    #hud .hearts { font-size: 14px; letter-spacing: 1px; }
+    #stage { padding: 4px; }
+    canvas#world { box-shadow: 0 0 0 2px #555, 0 4px 0 #000; border-width: 3px; }
+  }
   @media (max-width: 480px) {
-    #hud { font-size: 12px; padding: 6px 8px; }
-    .panel h1 { font-size: 20px; }
-    .battle .question { font-size: 22px; }
-    .battle .opt { font-size: 20px; padding: 12px; }
+    #hud { font-size: 10px; padding: 4px; gap: 3px; }
+    #hud .badge { padding: 2px 4px; font-size: 10px; }
+    #hud button.tiny { padding: 2px 5px; font-size: 10px; }
+    #hud .hearts { font-size: 12px; }
+    .panel h1 { font-size: 18px; }
+    .panel { padding: 16px; }
+    .battle .question { font-size: 20px; }
+    .battle .opt { font-size: 18px; padding: 12px; }
+    .age-card .big { font-size: 18px; }
+    .age-card .small { font-size: 10px; }
+  }
+  /* 横屏低高度 */
+  @media (max-height: 480px) and (orientation: landscape) {
+    #hud { padding: 3px 8px; font-size: 10px; }
+    #stage { padding: 2px; }
+    .panel { padding: 12px; max-height: 90vh; overflow-y: auto; }
+    .panel h1 { font-size: 16px; margin-bottom: 4px; }
+    .panel h2 { font-size: 14px; margin-bottom: 6px; }
+    .age-grid { gap: 6px; }
+    .age-card { padding: 8px; }
   }
 </style>
 </head>
@@ -571,15 +622,26 @@
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  // 让 canvas 自适应屏幕但保持像素比
+  // 让 canvas 自适应屏幕 (考虑宽高 + 留控制按钮空间)
   function fitCanvas() {
-    const stage = document.getElementById('stage');
-    const maxW = Math.min(window.innerWidth - 20, 720);
-    const scale = Math.min(1, maxW / W);
-    canvas.style.width = (W * scale) + 'px';
-    canvas.style.height = (H * scale) + 'px';
+    const hudEl = document.getElementById('hud');
+    const hudH = hudEl ? hudEl.offsetHeight : 50;
+    const isTouch = window.matchMedia('(pointer: coarse)').matches ||
+                    window.matchMedia('(hover: none)').matches;
+    const isLandscape = window.innerWidth > window.innerHeight;
+    // 触屏: 给按钮预留空间; 横屏小一点 (按钮在两侧但浮动)
+    const ctrlReserve = isTouch ? (isLandscape ? 20 : 96) : 16;
+    const padX = window.innerWidth < 720 ? 10 : 20;
+    const maxW = Math.min(window.innerWidth - padX, 1100);
+    const maxH = window.innerHeight - hudH - ctrlReserve - 20;
+    const scale = Math.min(maxW / W, maxH / H);
+    // 允许放大到 2x (高清屏看着更舒服)
+    const finalScale = Math.max(0.35, Math.min(2.5, scale));
+    canvas.style.width  = Math.floor(W * finalScale) + 'px';
+    canvas.style.height = Math.floor(H * finalScale) + 'px';
   }
   window.addEventListener('resize', fitCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(fitCanvas, 100));
 
   // ====== 简单音效 (Web Audio) ======
   function beep(freq, dur=0.12, type='square', vol=0.05) {
@@ -1405,17 +1467,17 @@
     // 镜头跟随
     state.camX = clamp(p.x + p.w/2 - W/2, 0, MAP_COLS*TILE - W);
 
-    // 怪物碰撞
+    // 怪物碰撞 (扩大命中盒, 防止跳过)
     if (!state.inBattle && !state.inMining) {
       for (const m of state.mobs) {
         if (m.dead) continue;
-        if (rectOverlap(p, m)) {
+        if (rectOverlap(p, mobHitbox(m))) {
           startBattle(m);
           return;
         }
       }
       // Boss 碰撞 (击败后 hp=0 不再触发)
-      if (state.boss && state.boss.hp > 0 && rectOverlap(p, state.boss)) {
+      if (state.boss && state.boss.hp > 0 && rectOverlap(p, bossHitbox(state.boss))) {
         startBossBattle();
         return;
       }
@@ -1447,6 +1509,15 @@
   function rectOverlap(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x &&
            a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  // 命中盒: 比可视区域更大, 向上延伸至玩家跳跃范围, 两侧加 small buffer
+  // 玩家最大跳跃约 100px, 延伸 130 保证无法绕开
+  function mobHitbox(m) {
+    return { x: m.x - 4, y: m.y - 130, w: m.w + 8, h: m.h + 130 };
+  }
+  function bossHitbox(b) {
+    return { x: b.x - 6, y: b.y - 100, w: b.w + 12, h: b.h + 100 };
   }
 
   // 水平横扫: 返回 {tx, ty} 第一个挡路块, 或 null
