@@ -270,8 +270,8 @@
   <button data-action="right">▶</button>
 </div>
 <div id="actBtns" aria-hidden="true">
-  <button data-action="jump">⬆ 跳</button>
-  <button data-action="mine">⛏ 挖</button>
+  <button data-action="jump" data-i18n="btnJump">⬆ 跳</button>
+  <button data-action="mine" data-i18n="btnMine">⛏ 挖</button>
 </div>
 
 <!-- Start menu -->
@@ -374,6 +374,7 @@
       age8:'8 岁', age8desc:'乘法口诀·入门除法',
       hintControls:'🎮 电脑：←→ 走 · ↑/空格 跳 · E 挖矿  |  📱 触屏：← → 跳 挖',
       btnStart:'开始冒险',
+      btnJump:'⬆ 跳', btnMine:'⛏ 挖',
       hudLevel:'第',  hudLevelAfter:'关',
       hudBoss:'BOSS',
       hudAgeUnit:'岁',
@@ -450,6 +451,7 @@
       age8:'Age 8', age8desc:'Times Table · Basic Divide',
       hintControls:'🎮 PC: ←→ Move · ↑/Space Jump · E Mine  |  📱 Touch: ← → Jump Mine',
       btnStart:'Start Adventure',
+      btnJump:'⬆ Jump', btnMine:'⛏ Mine',
       hudLevel:'Level', hudLevelAfter:'',
       hudBoss:'BOSS',
       hudAgeUnit:'yo',
@@ -1563,27 +1565,12 @@
     p.vy += GRAVITY;
     if (p.vy > MAX_FALL) p.vy = MAX_FALL;
 
-    // 水平移动 + 碰撞 (可能触发挖矿/战斗)
+    // 水平移动 + 碰撞 (仅卡墙, 不自动触发挖矿 — 挖矿需主动按 E 或点 挖)
     if (p.vx !== 0) {
       const next = p.x + p.vx;
       const hit = horizontalSweep(p, next);
       if (hit) {
-        // 撞到固体: 检查是否是怪物附近 / 可挖矿
-        const tileType = state.map[hit.ty][hit.tx];
-        if (MINEABLE[tileType]) {
-          const ore = MINEABLE[tileType];
-          if (state.pickaxe < ore.need) {
-            flashMessage(t('needSword', { n: ore.need }));
-            // 卡墙
-            p.x = (p.vx > 0) ? hit.tx*TILE - p.w : (hit.tx+1)*TILE;
-          } else {
-            startMining(hit.tx, hit.ty, tileType);
-            p.x = (p.vx > 0) ? hit.tx*TILE - p.w : (hit.tx+1)*TILE;
-          }
-        } else {
-          // 普通固体: 停下
-          p.x = (p.vx > 0) ? hit.tx*TILE - p.w : (hit.tx+1)*TILE;
-        }
+        p.x = (p.vx > 0) ? hit.tx*TILE - p.w : (hit.tx+1)*TILE;
         p.vx = 0;
       } else {
         p.x = next;
